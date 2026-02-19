@@ -1,1 +1,2 @@
-# integrity log
+# IRREVERSO integrity hashes
+# Add new hashes on release tags only.

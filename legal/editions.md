@@ -1,2 +1,5 @@
-v0.1.0 — Genesis commit
-Estrutura inicial do IRREVERSO
+# Editions (IRREVERSO)
+
+## v0.1.0
+- Initial structure: canon/, archive/, transmissions/, legal/
+- Added CODEX rules and repository standards

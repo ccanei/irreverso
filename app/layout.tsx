@@ -1,4 +1,5 @@
 import './globals.css';
+import { FutureLeak } from '../components/FutureLeak';
 
 export const metadata = {
   title: 'IRREVERSO',
@@ -16,6 +17,7 @@ export default function RootLayout({
 	{/* camada:0 :: observador necessário */}
 	<meta name="irv:handshake" content="pending" />
 	<meta name="irv:continuity" content="echo/authorized/absence" />
+	<FutureLeak />
 	{children}
       </body>
     </html>

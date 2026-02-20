@@ -6,17 +6,17 @@ import { addDwellTime, readEventsTrail, readPresence, trackVisit } from "../../.
 const baseText = "O medo é uma forma de reconhecimento";
 
 function mutateWhisper(text: string, seed: number) {
-  const mode = seed % 3;
+  const pool = [
+    `${text}.`,
+    `${text} .`,
+    text.replace(" é ", "  é "),
+    text.replace(" de ", "  de "),
+    "Uma forma de reconhecimento é o medo",
+    "O medo é uma forma de reconhecimento...",
+    "O medo  é uma forma de reconhecimento",
+  ];
 
-  if (mode === 0) {
-    return `${text} .`;
-  }
-
-  if (mode === 1) {
-    return "Uma forma de reconhecimento é o medo";
-  }
-
-  return text.replace(" de ", "  de ");
+  return pool[seed % pool.length] || text;
 }
 
 export function PresenceWhisper() {
@@ -30,9 +30,11 @@ export function PresenceWhisper() {
     const path = window.location.pathname;
     const before = readPresence(now);
     const previousRoute = before.lastRoute;
-    const strongEvent = readEventsTrail()
-      .slice(-6)
-      .some((item) => item.type === "rollback_success" || item.type === "rare_historical_terminal");
+
+    const relevantEvents = readEventsTrail().slice(-8);
+    const strongEvent = relevantEvents.some((item) =>
+      ["rollback_success", "historical_takeover", "temporal_breach"].includes(item.type),
+    );
 
     const after = trackVisit(path, now);
     startedAt.current = performance.now();
@@ -40,19 +42,26 @@ export function PresenceWhisper() {
     const baseDelay = Math.floor(90 + Math.random() * 320);
     const integrityDelay = after.integrity < 99.7 ? Math.floor(120 + Math.random() * 160) : 0;
     const delay = baseDelay + integrityDelay;
+
     const timer = window.setTimeout(() => {
       let nextText = baseText;
+      const driftSeed = before.visits + after.variance + relevantEvents.length;
 
       if (before.visits % 2 === 1 || previousRoute === "/signals") {
         nextText = `${nextText}.`;
       }
 
+      if (before.visits >= 3) {
+        nextText = mutateWhisper(nextText, driftSeed);
+      }
+
       if (strongEvent) {
-        nextText = mutateWhisper(nextText, before.visits + after.variance);
+        nextText = mutateWhisper(nextText, driftSeed + 3);
       }
 
       setText(nextText);
-      const subtleWeight = 330 + ((before.visits + (previousRoute ? 1 : 0)) % 3) * 20;
+
+      const subtleWeight = 330 + ((before.visits + (strongEvent ? 1 : 0)) % 4) * 16;
       setFontWeight(subtleWeight);
       setDelayReady(true);
     }, delay);

@@ -8,7 +8,9 @@ export function RealityFragment() {
 
   useEffect(() => {
     const presence = readPresence();
-    if (presence.visits < 4) {
+    const interactions = presence.visits + presence.variance + presence.focusLossCount;
+
+    if (interactions < 7) {
       return;
     }
 

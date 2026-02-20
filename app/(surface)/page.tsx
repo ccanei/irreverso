@@ -4,5 +4,5 @@ export default function Home() {
       <h1>IRREVERSO</h1>
       <p>interface ativa</p>
     </main>
-  )
+  );
 }

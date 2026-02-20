@@ -10,6 +10,7 @@ import {
   registerFocusLoss,
 } from "../lib/presence";
 import { applyFutureLeakResidual } from "../lib/futureLeak";
+import { getAlignment } from "../lib/alignment";
 
 const TITLE_FLAG = "irreverso.focusTitleHandled";
 const FOCUS_LOST_EVENT_FLAG = "irreverso.focusLostEventLogged";
@@ -81,12 +82,42 @@ export function SystemStatus() {
   const [latency, setLatency] = useState(() => randomLatency());
   const [integrity, setIntegrity] = useState(99.64);
   const [, setVariance] = useState(0);
-  const [instanceState, setInstanceState] = useState<"active" | "observing" | "learning">("active");
+  const [instanceState, setInstanceState] = useState<
+    "active" | "observing" | "learning" | "retained" | "stabilized" | "irreversible"
+  >("active");
   const [showProbabilityEvent, setShowProbabilityEvent] = useState(false);
   const [rareLogLine, setRareLogLine] = useState<string | null>(null);
+  const [alignmentPhase, setAlignmentPhase] = useState(0);
   const varianceRef = useRef(0);
   const visitsRef = useRef(0);
   const integrityRef = useRef(integrity);
+
+  const phaseCappedState = (
+    next: "active" | "observing" | "learning" | "retained" | "stabilized" | "irreversible",
+    phase: number,
+  ) => {
+    if (phase >= 5) {
+      return "irreversible" as const;
+    }
+
+    if (phase >= 4) {
+      return "stabilized" as const;
+    }
+
+    if (phase >= 3) {
+      return "retained" as const;
+    }
+
+    if (phase <= 0) {
+      return "active" as const;
+    }
+
+    if (phase === 1 && next === "learning") {
+      return "observing" as const;
+    }
+
+    return next;
+  };
 
   useEffect(() => {
     const residual = applyFutureLeakResidual();
@@ -98,10 +129,14 @@ export function SystemStatus() {
     integrityRef.current = current.integrity;
     pushRouteTrail(window.location.pathname);
 
+    const phase = getAlignment().phase;
+    setAlignmentPhase(phase);
+    setInstanceState((current) => phaseCappedState(current, phase));
+
     if (residual.forceLearning) {
-      setInstanceState("learning");
+      setInstanceState(phaseCappedState("learning", phase));
       const resetTimer = window.setTimeout(() => {
-        setInstanceState("active");
+        setInstanceState(phaseCappedState("active", phase));
       }, 10_000);
 
       const tick = window.setInterval(() => {
@@ -259,7 +294,7 @@ export function SystemStatus() {
     let secondTimer: number | undefined;
     const firstDelay = 37000 + Math.round(Math.random() * 15000);
     const firstTimer = window.setTimeout(() => {
-      setInstanceState("observing");
+      setInstanceState((current) => phaseCappedState(current === "learning" ? "learning" : "observing", alignmentPhase));
       addEvent("state_observing");
       const memory = increaseVariance(1);
       setVariance(memory.variance);
@@ -271,7 +306,7 @@ export function SystemStatus() {
 
       const secondDelay = 6000 + Math.round(Math.random() * 4000);
       secondTimer = window.setTimeout(() => {
-        setInstanceState("learning");
+        setInstanceState(phaseCappedState("learning", alignmentPhase));
         addEvent("state_learning");
         const updated = increaseVariance(1);
         setVariance(updated.variance);
@@ -285,7 +320,7 @@ export function SystemStatus() {
         window.clearTimeout(secondTimer);
       }
     };
-  }, []);
+  }, [alignmentPhase]);
 
   useEffect(() => {
     const sourceRoute = cameFromSignalsOrArchive();
@@ -320,6 +355,18 @@ export function SystemStatus() {
       pool.push("// archive index warmed");
     }
 
+    if (alignmentPhase >= 3) {
+      pool.push("// observer retained");
+    }
+
+    if (alignmentPhase >= 4) {
+      pool.push("// state stabilized");
+    }
+
+    if (alignmentPhase >= 5) {
+      pool.push("// irreversible branch locked");
+    }
+
     const selected = pool[Math.floor(Math.random() * pool.length)];
     setRareLogLine(selected);
 
@@ -331,7 +378,7 @@ export function SystemStatus() {
     return () => {
       window.clearTimeout(hideTimer);
     };
-  }, []);
+  }, [alignmentPhase]);
 
   const integrityText = useMemo(() => integrity.toFixed(2), [integrity]);
 

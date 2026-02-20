@@ -1,21 +1,30 @@
 "use client";
 
-import { useEffect } from "react";
-import { addEvent } from "../../../lib/presence";
+import { useEffect, useMemo, useState } from "react";
+import { addEvent, readEventsTrail } from "../../../lib/presence";
+import { CANON_QUOTES } from "../../../lib/dominion";
 
 export default function Archive() {
+  const [open, setOpen] = useState(false);
+
   useEffect(() => {
     addEvent("route_archive");
+    const unlocked = readEventsTrail().some((event) => event.type.includes("breach") || event.type.includes("takeover"));
+    setOpen(unlocked);
   }, []);
 
-  return (
-    <main className="center">
-      <div className="terminal terminal--narrow">
-        <p>arquivo em leitura parcial</p>
-        <p>segmentos preservados</p>
+  const blocks = useMemo(
+    () => [CANON_QUOTES[7], CANON_QUOTES[8], open ? CANON_QUOTES[12] : "[REDACTED BLOCK // waiting anomaly]"] ,
+    [open],
+  );
 
-        <p className="whisper">Você foi autorizado a recordar.</p>
-      </div>
-    </main>
+  return (
+    <section>
+      <p className="section-head">ARCHIVE // restricted</p>
+      {blocks.map((line, index) => (
+        <p key={`${line}-${index}`}>{line}</p>
+      ))}
+      <p>{open ? "access granted // anomaly" : "restricted"}</p>
+    </section>
   );
 }

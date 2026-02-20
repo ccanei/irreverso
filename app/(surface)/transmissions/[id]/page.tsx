@@ -1,91 +1,34 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { addEvent } from "../../../../lib/presence";
-import {
-  calculateTransmissionUnlockState,
-  findTransmissionById,
-  markTransmissionAsRead,
-  readReadTransmissions,
-} from "../../../../lib/transmissions";
+import { calculateUnlockedIds, findTransmissionById, markTransmissionAsRead } from "../../../../lib/transmissions";
 
-type TransmissionDetailPageProps = {
-  params: {
-    id: string;
-  };
-};
-
-export default function TransmissionDetailPage({ params }: TransmissionDetailPageProps) {
+export default function TransmissionDetailPage({ params }: { params: { id: string } }) {
   const tx = findTransmissionById(params.id);
-  const [isUnlocked, setIsUnlocked] = useState(false);
-  const [isRead, setIsRead] = useState(false);
+  const [allowed, setAllowed] = useState(false);
 
   useEffect(() => {
-    if (!tx) {
-      return;
+    if (!tx) return;
+    const unlocked = calculateUnlockedIds();
+    const canOpen = unlocked.has(tx.id);
+    setAllowed(canOpen);
+    if (canOpen) {
+      markTransmissionAsRead(tx.id);
+      addEvent(`transmission_read:${tx.id}`);
     }
-
-    const unlockState = calculateTransmissionUnlockState();
-    const unlocked = unlockState.unlockedIds.has(tx.id);
-    setIsUnlocked(unlocked);
-
-    if (!unlocked) {
-      return;
-    }
-
-    addEvent(`transmission_read:${tx.id}`);
-    markTransmissionAsRead(tx.id);
-    setIsRead(readReadTransmissions().has(tx.id));
   }, [tx]);
 
-  const bodyParts = useMemo(() => {
-    if (!tx || !isUnlocked) {
-      return [] as string[];
-    }
-
-    return tx.body.split(". ").filter((line) => line.trim().length > 0);
-  }, [isUnlocked, tx]);
-
   if (!tx) {
-    return (
-      <main className="center">
-        <div className="terminal terminal--narrow">
-          <p>transmission not found</p>
-          <p className="whisper">signal id absent</p>
-          <Link href="/transmissions" className="enter">
-            transmissions
-          </Link>
-        </div>
-      </main>
-    );
+    return <p>TX absent.</p>;
   }
 
   return (
-    <main className="center">
-      <div className="terminal transmissions-shell">
-        <p className="transmission-meta">
-          {tx.timestamp} · {tx.signal}
-        </p>
-        <p className="transmission-title">{isUnlocked ? tx.title : "transmission: locked"}</p>
-
-        {isUnlocked ? (
-          <div className="transmission-body" aria-label="transmissão detalhada">
-            {bodyParts.map((line, index) => (
-              <p key={`${tx.id}-${index}`}>{line.trim().endsWith(".") ? line.trim() : `${line.trim()}.`}</p>
-            ))}
-          </div>
-        ) : (
-          <p className="transmission-snippet">available after alignment</p>
-        )}
-
-        <div className="quiet-links">
-          <Link href="/transmissions" className="enter">
-            transmissions
-          </Link>
-          {isRead ? <p className="transmission-read">read</p> : null}
-        </div>
-      </div>
-    </main>
+    <section>
+      <p className="section-head">{tx.title}</p>
+      {allowed ? tx.body.map((line) => <p key={line}>{line}</p>) : <p>TX locked // integrity gate</p>}
+      <Link href="/transmissions">return transmissions</Link>
+    </section>
   );
 }

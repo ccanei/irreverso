@@ -77,3 +77,9 @@ html,body{
 .muted{
   color:#727272;
 }
+
+
+.probability-event{
+  color:#4f4f4f;
+  opacity:.72;
+}

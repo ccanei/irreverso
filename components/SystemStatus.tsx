@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { increaseVariance, pushRouteTrail, readPresence, registerFocusLoss } from "../lib/presence";
 
 const TITLE_FLAG = "irreverso.focusTitleHandled";
+const PROBABILITY_FLAG = "probabilityEventFired";
 
 function randomLatency() {
   return 26 + Math.round(Math.random() * 38);
@@ -29,13 +30,18 @@ export function SystemStatus() {
   const [integrity, setIntegrity] = useState(99.64);
   const [, setVariance] = useState(0);
   const [instanceState, setInstanceState] = useState<"active" | "observing" | "learning">("active");
+  const [showProbabilityEvent, setShowProbabilityEvent] = useState(false);
   const varianceRef = useRef(0);
+  const visitsRef = useRef(0);
+  const integrityRef = useRef(integrity);
 
   useEffect(() => {
     const current = readPresence();
     setIntegrity(current.integrity);
     setVariance(current.variance);
     varianceRef.current = current.variance;
+    visitsRef.current = current.visits;
+    integrityRef.current = current.integrity;
     pushRouteTrail(window.location.pathname);
 
     const tick = window.setInterval(() => {
@@ -46,12 +52,67 @@ export function SystemStatus() {
 
       setIntegrity((prev) => {
         const next = prev + (Math.random() - 0.5) * 0.01;
-        return Math.min(99.99, Math.max(98.8, next));
+        const clamped = Math.min(99.99, Math.max(98.8, next));
+        integrityRef.current = clamped;
+        return clamped;
       });
     }, 3200 + Math.round(Math.random() * 2200));
 
     return () => {
       window.clearInterval(tick);
+    };
+  }, []);
+
+  useEffect(() => {
+    let hasTriggered = window.localStorage.getItem(PROBABILITY_FLAG) === "true";
+
+    if (hasTriggered) {
+      return;
+    }
+
+    let hideTimer: number | undefined;
+
+    const maybeTrigger = () => {
+      if (hasTriggered) {
+        return;
+      }
+
+      const qualifies = visitsRef.current >= 2 && integrityRef.current < 99.85;
+      if (!qualifies) {
+        return;
+      }
+
+      hasTriggered = true;
+      window.localStorage.setItem(PROBABILITY_FLAG, "true");
+      setShowProbabilityEvent(true);
+
+      hideTimer = window.setTimeout(() => {
+        setShowProbabilityEvent(false);
+      }, 900);
+
+      window.removeEventListener("blur", onBlur);
+      window.removeEventListener("mousemove", onMouseMove);
+    };
+
+    const onBlur = () => {
+      maybeTrigger();
+    };
+
+    const onMouseMove = (event: MouseEvent) => {
+      if (event.clientY < 40) {
+        maybeTrigger();
+      }
+    };
+
+    window.addEventListener("blur", onBlur, { once: true });
+    window.addEventListener("mousemove", onMouseMove);
+
+    return () => {
+      if (hideTimer) {
+        window.clearTimeout(hideTimer);
+      }
+      window.removeEventListener("blur", onBlur);
+      window.removeEventListener("mousemove", onMouseMove);
     };
   }, []);
 
@@ -152,6 +213,7 @@ export function SystemStatus() {
       <p className="statusline">
         integrity: <span className="muted">{integrityText}%</span>
       </p>
+      {showProbabilityEvent ? <p className="statusline probability-event">// probability recalculated</p> : null}
     </div>
   );
 }

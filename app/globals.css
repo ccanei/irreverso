@@ -126,42 +126,50 @@ html,body{
 .future-leak{
   position:fixed;
   inset:0;
-  z-index:40;
-  background:rgba(2,2,2,.9);
+  z-index:55;
+  background:#000;
   display:flex;
   align-items:center;
   justify-content:center;
   pointer-events:none;
 }
 
+.future-leak--flash{
+  background:#fff;
+}
+
 .future-leak::before{
   content:"";
   position:absolute;
   inset:0;
-  opacity:.06;
-  background-image:radial-gradient(circle at 20% 20%, rgba(255,255,255,.45) 0, transparent 30%), radial-gradient(circle at 80% 80%, rgba(255,255,255,.35) 0, transparent 28%);
+  opacity:.028;
+  background-image:radial-gradient(circle at 20% 20%, rgba(255,255,255,.28) 0, transparent 34%), radial-gradient(circle at 80% 80%, rgba(255,255,255,.16) 0, transparent 31%);
   mix-blend-mode:screen;
 }
 
 .future-leak--rare{
-  background:rgba(0,0,0,.95);
+  background:#000;
 }
 
 .future-leak__terminal{
-  width:min(92vw,72ch);
-  max-height:68vh;
+  width:min(94vw,72ch);
+  max-height:72vh;
   overflow:hidden;
-  color:#d4d4d4;
-  font-size:.76rem;
-  line-height:1.6;
-  letter-spacing:.05em;
-  opacity:.95;
+  color:#d7d7d7;
+  font-size:.79rem;
+  line-height:1.62;
+  letter-spacing:.055em;
+  opacity:.96;
 }
 
 .future-leak__line{
   margin:0 0 .26rem;
   white-space:nowrap;
   animation:futureLeakType .12s linear;
+}
+
+.future-leak__line--cursor{
+  animation:cursorPulse .42s steps(2, end) infinite;
 }
 
 @keyframes futureLeakType{
@@ -261,4 +269,9 @@ html,body{
 
 .reality-fragment--visible{
   opacity:.7;
+}
+
+@keyframes cursorPulse{
+  0%,49%{opacity:.14}
+  50%,100%{opacity:1}
 }

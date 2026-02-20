@@ -1,4 +1,13 @@
+"use client";
+
+import { useEffect } from "react";
+import { addEvent } from "../../../lib/presence";
+
 export default function Archive() {
+  useEffect(() => {
+    addEvent("route_archive");
+  }, []);
+
   return (
     <main className="center">
       <div className="terminal terminal--narrow">

@@ -1,9 +1,17 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { increaseVariance, pushRouteTrail, readPresence, registerFocusLoss } from "../lib/presence";
+import {
+  addEvent,
+  increaseVariance,
+  pushRouteTrail,
+  readEventsTrail,
+  readPresence,
+  registerFocusLoss,
+} from "../lib/presence";
 
 const TITLE_FLAG = "irreverso.focusTitleHandled";
+const FOCUS_LOST_EVENT_FLAG = "irreverso.focusLostEventLogged";
 const PROBABILITY_FLAG = "probabilityEventFired";
 
 function randomLatency() {
@@ -25,12 +33,56 @@ function maybeNextStatus(variance: number) {
   return null;
 }
 
+function cameFromSignalsOrArchive() {
+  if (typeof window === "undefined") {
+    return null;
+  }
+
+  const referrer = document.referrer;
+  if (!referrer) {
+    return null;
+  }
+
+  try {
+    const ref = new URL(referrer);
+    if (ref.origin !== window.location.origin) {
+      return null;
+    }
+
+    if (ref.pathname === "/signals") {
+      return "signals" as const;
+    }
+
+    if (ref.pathname === "/archive") {
+      return "archive" as const;
+    }
+
+    return null;
+  } catch {
+    return null;
+  }
+}
+
+function probabilityWindowBoost(eventsTrail: ReturnType<typeof readEventsTrail>) {
+  const latestProbability = [...eventsTrail]
+    .reverse()
+    .find((item) => item.type === "probability_recalculated");
+
+  if (!latestProbability) {
+    return false;
+  }
+
+  const fortyEightHours = 48 * 60 * 60 * 1000;
+  return Date.now() - latestProbability.t <= fortyEightHours;
+}
+
 export function SystemStatus() {
   const [latency, setLatency] = useState(() => randomLatency());
   const [integrity, setIntegrity] = useState(99.64);
   const [, setVariance] = useState(0);
   const [instanceState, setInstanceState] = useState<"active" | "observing" | "learning">("active");
   const [showProbabilityEvent, setShowProbabilityEvent] = useState(false);
+  const [rareLogLine, setRareLogLine] = useState<string | null>(null);
   const varianceRef = useRef(0);
   const visitsRef = useRef(0);
   const integrityRef = useRef(integrity);
@@ -84,6 +136,7 @@ export function SystemStatus() {
 
       hasTriggered = true;
       window.localStorage.setItem(PROBABILITY_FLAG, "true");
+      addEvent("probability_recalculated");
       setShowProbabilityEvent(true);
 
       hideTimer = window.setTimeout(() => {
@@ -126,6 +179,10 @@ export function SystemStatus() {
         return;
       }
       registerFocusLoss();
+      if (window.sessionStorage.getItem(FOCUS_LOST_EVENT_FLAG) !== "1") {
+        addEvent("focus_lost");
+        window.sessionStorage.setItem(FOCUS_LOST_EVENT_FLAG, "1");
+      }
       didCountFocusLoss = true;
     };
 
@@ -175,6 +232,7 @@ export function SystemStatus() {
     const firstDelay = 37000 + Math.round(Math.random() * 15000);
     const firstTimer = window.setTimeout(() => {
       setInstanceState("observing");
+      addEvent("state_observing");
       const memory = increaseVariance(1);
       setVariance(memory.variance);
       varianceRef.current = memory.variance;
@@ -186,6 +244,7 @@ export function SystemStatus() {
       const secondDelay = 6000 + Math.round(Math.random() * 4000);
       secondTimer = window.setTimeout(() => {
         setInstanceState("learning");
+        addEvent("state_learning");
         const updated = increaseVariance(1);
         setVariance(updated.variance);
         varianceRef.current = updated.variance;
@@ -197,6 +256,52 @@ export function SystemStatus() {
       if (secondTimer) {
         window.clearTimeout(secondTimer);
       }
+    };
+  }, []);
+
+  useEffect(() => {
+    const sourceRoute = cameFromSignalsOrArchive();
+    const eventsTrail = readEventsTrail();
+
+    let chance = 0.12;
+    if (probabilityWindowBoost(eventsTrail)) {
+      chance = 0.22;
+    }
+    if (sourceRoute) {
+      chance = 0.18;
+    }
+
+    if (Math.random() >= chance) {
+      return;
+    }
+
+    const pool = [
+      "// variance recorded",
+      "// drift compensated",
+      "// state persisted",
+      "// route memory updated",
+      "// integrity adjusted",
+      "// probability surface stable",
+    ];
+
+    if (sourceRoute === "signals") {
+      pool.push("// signal echo detected");
+    }
+
+    if (sourceRoute === "archive") {
+      pool.push("// archive index warmed");
+    }
+
+    const selected = pool[Math.floor(Math.random() * pool.length)];
+    setRareLogLine(selected);
+
+    const hideAfter = 900 + Math.round(Math.random() * 300);
+    const hideTimer = window.setTimeout(() => {
+      setRareLogLine(null);
+    }, hideAfter);
+
+    return () => {
+      window.clearTimeout(hideTimer);
     };
   }, []);
 
@@ -214,6 +319,7 @@ export function SystemStatus() {
         integrity: <span className="muted">{integrityText}%</span>
       </p>
       {showProbabilityEvent ? <p className="statusline probability-event">// probability recalculated</p> : null}
+      {rareLogLine ? <p className="statusline probability-event">{rareLogLine}</p> : null}
     </div>
   );
 }

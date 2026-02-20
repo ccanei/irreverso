@@ -10,7 +10,14 @@ export type PresenceState = {
   routeTrail: string[];
 };
 
+export type PresenceEvent = {
+  type: string;
+  t: number;
+};
+
 const STORAGE_KEY = "irreverso.presence";
+const EVENTS_TRAIL_KEY = "irreverso.eventsTrail";
+const EVENTS_TRAIL_MAX_ITEMS = 12;
 
 function clamp(value: number, min: number, max: number) {
   return Math.min(max, Math.max(min, value));
@@ -28,6 +35,39 @@ function asRouteTrail(value: unknown) {
 
   const routes = value.filter((item): item is string => typeof item === "string" && item.length > 0);
   return routes.slice(-5);
+}
+
+function asEventsTrail(value: unknown) {
+  if (!Array.isArray(value)) {
+    return [] as PresenceEvent[];
+  }
+
+  const events = value
+    .map((item) => {
+      if (!item || typeof item !== "object") {
+        return null;
+      }
+
+      const nextType = (item as { type?: unknown }).type;
+      const nextTime = (item as { t?: unknown }).t;
+
+      if (typeof nextType !== "string" || nextType.length === 0) {
+        return null;
+      }
+
+      const t = asFiniteNumber(nextTime, NaN);
+      if (!Number.isFinite(t)) {
+        return null;
+      }
+
+      return {
+        type: nextType,
+        t,
+      };
+    })
+    .filter((item): item is PresenceEvent => item !== null);
+
+  return events.slice(-EVENTS_TRAIL_MAX_ITEMS);
 }
 
 function driftIntegrity(current: number) {
@@ -158,4 +198,33 @@ export function pushRouteTrail(route: string, now = Date.now()): PresenceState {
     routeTrail: trailWith(previous.routeTrail, route),
     lastSeen: now,
   });
+}
+
+export function readEventsTrail(): PresenceEvent[] {
+  if (typeof window === "undefined") {
+    return [];
+  }
+
+  const raw = window.localStorage.getItem(EVENTS_TRAIL_KEY);
+  if (!raw) {
+    return [];
+  }
+
+  try {
+    const parsed = JSON.parse(raw);
+    return asEventsTrail(parsed);
+  } catch {
+    return [];
+  }
+}
+
+export function addEvent(type: string, now = Date.now()): PresenceEvent[] {
+  if (typeof window === "undefined") {
+    return [];
+  }
+
+  const current = readEventsTrail();
+  const next = [...current, { type, t: now }].slice(-EVENTS_TRAIL_MAX_ITEMS);
+  window.localStorage.setItem(EVENTS_TRAIL_KEY, JSON.stringify(next));
+  return next;
 }

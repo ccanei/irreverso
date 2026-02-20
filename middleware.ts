@@ -1,17 +1,19 @@
 import { NextRequest, NextResponse } from "next/server";
 
 export function middleware(request: NextRequest) {
-  const mode = request.cookies.get("irv_seen")?.value === "1" ? "stable" : "breach";
-  const requestHeaders = new Headers(request.headers);
-  requestHeaders.set("x-irv-mode", mode);
+  const { pathname, searchParams } = request.nextUrl;
+  if (pathname !== "/") return NextResponse.next();
 
-  return NextResponse.next({
-    request: {
-      headers: requestHeaders,
-    },
-  });
+  const seen = request.cookies.get("irv_seen")?.value === "1";
+  const anomaly = searchParams.get("anomaly") === "1";
+
+  if (seen && !anomaly) {
+    return NextResponse.redirect(new URL("/core", request.url));
+  }
+
+  return NextResponse.next();
 }
 
 export const config = {
-  matcher: ["/((?!_next/static|_next/image|favicon.ico).*)"],
+  matcher: ["/"],
 };

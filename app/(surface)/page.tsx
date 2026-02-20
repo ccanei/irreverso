@@ -1,9 +1,12 @@
 import { SystemStatus } from "../../components/SystemStatus";
 import { PresenceWhisper } from "./_components/presence-whisper";
+import { FutureLeak } from "../../components/FutureLeak";
 
 export default function Home() {
   return (
     <main className="center">
+      <FutureLeak />
+
       <div className="terminal terminal--narrow">
         <p>camada aberta</p>
         <p>sinais em baixa frequência</p>

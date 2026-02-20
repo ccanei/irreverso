@@ -9,6 +9,7 @@ import {
   readPresence,
   registerFocusLoss,
 } from "../lib/presence";
+import { applyFutureLeakResidual } from "../lib/futureLeak";
 
 const TITLE_FLAG = "irreverso.focusTitleHandled";
 const FOCUS_LOST_EVENT_FLAG = "irreverso.focusLostEventLogged";
@@ -88,6 +89,7 @@ export function SystemStatus() {
   const integrityRef = useRef(integrity);
 
   useEffect(() => {
+    const residual = applyFutureLeakResidual();
     const current = readPresence();
     setIntegrity(current.integrity);
     setVariance(current.variance);
@@ -95,6 +97,32 @@ export function SystemStatus() {
     visitsRef.current = current.visits;
     integrityRef.current = current.integrity;
     pushRouteTrail(window.location.pathname);
+
+    if (residual.forceLearning) {
+      setInstanceState("learning");
+      const resetTimer = window.setTimeout(() => {
+        setInstanceState("active");
+      }, 10_000);
+
+      const tick = window.setInterval(() => {
+        setLatency((prev) => {
+          const drift = Math.round((Math.random() - 0.5) * 8);
+          return Math.min(86, Math.max(19, prev + drift));
+        });
+
+        setIntegrity((prev) => {
+          const next = prev + (Math.random() - 0.5) * 0.01;
+          const clamped = Math.min(99.99, Math.max(98.8, next));
+          integrityRef.current = clamped;
+          return clamped;
+        });
+      }, 3200 + Math.round(Math.random() * 2200));
+
+      return () => {
+        window.clearTimeout(resetTimer);
+        window.clearInterval(tick);
+      };
+    }
 
     const tick = window.setInterval(() => {
       setLatency((prev) => {

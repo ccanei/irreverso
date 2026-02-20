@@ -4,5 +4,5 @@ export default function Archive() {
       <h1>ARQUIVO</h1>
       <p>acesso parcial</p>
     </main>
-  )
+  );
 }

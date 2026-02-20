@@ -201,6 +201,24 @@ a {
   }
 }
 
+
+.breach-blackframe {
+  position: fixed;
+  inset: 0;
+  background: #000;
+  z-index: 90;
+  animation: breachFrame 0.3s linear forwards;
+}
+
+@keyframes breachFrame {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}
+
 @media (max-width: 1020px) {
   .console-shell {
     grid-template-columns: 1fr;

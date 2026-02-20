@@ -3,14 +3,20 @@
 import { useEffect, useMemo, useState } from "react";
 import {
   buildFutureLeakScript,
+  buildRareHistoricalScript,
   completeFutureLeakRollback,
   decideFutureLeak,
+  decideRareHistoricalEvent,
   markFutureLeakTriggered,
-  readFutureLeak,
+  markRareHistoricalEvent,
 } from "../lib/futureLeak";
 import { readPresence } from "../lib/presence";
 
-type LeakState = "idle" | "running" | "rollback";
+type LeakState = "idle" | "running" | "rollback" | "rare";
+
+function yearPause(line: string) {
+  return /^\d{4}\s*>/.test(line) ? 180 + Math.round(Math.random() * 320) : 0;
+}
 
 export function FutureLeak() {
   const [state, setState] = useState<LeakState>("idle");
@@ -20,8 +26,25 @@ export function FutureLeak() {
 
   useEffect(() => {
     const now = Date.now();
-    const decision = decideFutureLeak(now);
+    const rareDecision = decideRareHistoricalEvent(now);
 
+    if (rareDecision.shouldTrigger) {
+      const rareScript = buildRareHistoricalScript(now);
+      markRareHistoricalEvent(rareScript.signature, now);
+      setState("rare");
+      setVisibleLines(rareScript.lines);
+
+      const timer = window.setTimeout(() => {
+        setState("idle");
+        setVisibleLines([]);
+      }, 8_000);
+
+      return () => {
+        window.clearTimeout(timer);
+      };
+    }
+
+    const decision = decideFutureLeak(now);
     if (!decision.shouldTrigger) {
       return;
     }
@@ -30,20 +53,24 @@ export function FutureLeak() {
     const script = buildFutureLeakScript(decision.nextLevel, presence.visits, now);
     markFutureLeakTriggered(decision.nextLevel, script.signature, now);
 
-    const totalMs = 3600 + Math.round(Math.random() * 1900);
-    const perLineMs = Math.max(80, Math.floor((totalMs - 1200) / script.lines.length));
+    const totalMs = 7000 + Math.round(Math.random() * 2000);
+    const preRollbackBudget = totalMs - 1400;
+    const basePerLine = Math.max(180, Math.floor(preRollbackBudget / script.lines.length));
 
     setState("running");
     const timers: number[] = [];
+    let elapsed = 0;
 
-    script.lines.forEach((line, index) => {
-      const timer = window.setTimeout(() => {
-        setVisibleLines((prev) => [...prev, line]);
-      }, index * perLineMs);
-      timers.push(timer);
+    script.lines.forEach((line) => {
+      elapsed += basePerLine + Math.round(Math.random() * 140) + yearPause(line);
+      timers.push(
+        window.setTimeout(() => {
+          setVisibleLines((prev) => [...prev, line]);
+        }, elapsed),
+      );
     });
 
-    const rollbackAt = script.lines.length * perLineMs + 120;
+    const rollbackAt = Math.min(totalMs - 900, elapsed + 180);
     timers.push(
       window.setTimeout(() => {
         setState("rollback");
@@ -56,7 +83,7 @@ export function FutureLeak() {
         setState("idle");
         setVisibleLines([]);
         completeFutureLeakRollback();
-      }, Math.min(6000, rollbackAt + 900)),
+      }, totalMs),
     );
 
     return () => {
@@ -71,7 +98,7 @@ export function FutureLeak() {
   }
 
   return (
-    <div className="future-leak" aria-hidden>
+    <div className={`future-leak ${state === "rare" ? "future-leak--rare" : ""}`} aria-hidden>
       <div className="future-leak__terminal">
         {visibleLines.map((line, index) => (
           <p className="future-leak__line" key={`${line}-${index}`}>

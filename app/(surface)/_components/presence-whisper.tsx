@@ -1,9 +1,23 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { addDwellTime, readPresence, trackVisit } from "../../../lib/presence";
+import { addDwellTime, readEventsTrail, readPresence, trackVisit } from "../../../lib/presence";
 
 const baseText = "O medo é uma forma de reconhecimento";
+
+function mutateWhisper(text: string, seed: number) {
+  const mode = seed % 3;
+
+  if (mode === 0) {
+    return `${text} .`;
+  }
+
+  if (mode === 1) {
+    return "Uma forma de reconhecimento é o medo";
+  }
+
+  return text.replace(" de ", "  de ");
+}
 
 export function PresenceWhisper() {
   const [text, setText] = useState(baseText);
@@ -16,6 +30,9 @@ export function PresenceWhisper() {
     const path = window.location.pathname;
     const before = readPresence(now);
     const previousRoute = before.lastRoute;
+    const strongEvent = readEventsTrail()
+      .slice(-6)
+      .some((item) => item.type === "rollback_success" || item.type === "rare_historical_terminal");
 
     const after = trackVisit(path, now);
     startedAt.current = performance.now();
@@ -28,6 +45,10 @@ export function PresenceWhisper() {
 
       if (before.visits % 2 === 1 || previousRoute === "/signals") {
         nextText = `${nextText}.`;
+      }
+
+      if (strongEvent) {
+        nextText = mutateWhisper(nextText, before.visits + after.variance);
       }
 
       setText(nextText);

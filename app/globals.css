@@ -1,7 +1,7 @@
 html,body{
   background:#050505;
   color:#d9d9d9;
-  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-family: "IBM Plex Mono", "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
   margin:0;
 }
 
@@ -14,9 +14,10 @@ html,body{
 }
 
 .terminal{
-  opacity:.9;
+  opacity:.93;
   line-height:1.8;
   letter-spacing:.08em;
+  text-shadow:0 0 .4px rgba(217,217,217,.16);
 }
 
 .terminal--narrow{
@@ -126,22 +127,35 @@ html,body{
   position:fixed;
   inset:0;
   z-index:40;
-  background:rgba(2,2,2,.86);
+  background:rgba(2,2,2,.9);
   display:flex;
   align-items:center;
   justify-content:center;
   pointer-events:none;
 }
 
+.future-leak::before{
+  content:"";
+  position:absolute;
+  inset:0;
+  opacity:.06;
+  background-image:radial-gradient(circle at 20% 20%, rgba(255,255,255,.45) 0, transparent 30%), radial-gradient(circle at 80% 80%, rgba(255,255,255,.35) 0, transparent 28%);
+  mix-blend-mode:screen;
+}
+
+.future-leak--rare{
+  background:rgba(0,0,0,.95);
+}
+
 .future-leak__terminal{
   width:min(92vw,72ch);
   max-height:68vh;
   overflow:hidden;
-  color:#c9c9c9;
+  color:#d4d4d4;
   font-size:.76rem;
-  line-height:1.55;
+  line-height:1.6;
   letter-spacing:.05em;
-  opacity:.92;
+  opacity:.95;
 }
 
 .future-leak__line{
@@ -230,4 +244,21 @@ html,body{
   color:#a9a9a9;
   line-height:1.72;
   letter-spacing:.04em;
+}
+
+.reality-fragment{
+  position:fixed;
+  left:16px;
+  bottom:14px;
+  margin:0;
+  color:#575757;
+  font-size:.6rem;
+  letter-spacing:.06em;
+  opacity:0;
+  transition:opacity 280ms ease;
+  pointer-events:none;
+}
+
+.reality-fragment--visible{
+  opacity:.7;
 }

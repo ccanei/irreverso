@@ -4,6 +4,7 @@ const DAY_MS = 86_400_000;
 const COOL_DOWN_MS = 72 * 60 * 60 * 1000;
 const FORCED_AFTER_ELIGIBLE_SESSIONS = 4;
 const MAX_LEVEL = 3;
+const RARE_EVENT_KEY = "rareHistoricalEvent";
 
 const STORAGE_KEYS = {
   level: "futureLeakLevel",
@@ -13,6 +14,7 @@ const STORAGE_KEYS = {
   eligibleSessions: "futureLeakEligibleSessions",
   residual: "futureLeakResidual",
   lastSequenceSig: "futureLeakLastSequenceSig",
+  recentSignatures: "futureLeakRecentSignatures",
 } as const;
 
 export type FutureLeakResidual = {
@@ -36,6 +38,15 @@ export type FutureLeakSnapshot = {
 export type FutureLeakDecision = {
   shouldTrigger: boolean;
   nextLevel: number;
+};
+
+export type RareHistoricalDecision = {
+  shouldTrigger: boolean;
+};
+
+export type RareHistoricalScript = {
+  lines: string[];
+  signature: string;
 };
 
 function clamp(value: number, min: number, max: number) {
@@ -212,6 +223,12 @@ const timelineLines = [
   "2107 > horizon checksum unresolved",
 ];
 
+const refinementLinesByLevel: Record<number, string[]> = {
+  1: ["continuity mesh: calibrating", "observer echo: deferred"],
+  2: ["context braid: adaptive", "a liberdade nunca foi removida. apenas redirecionada."],
+  3: ["causal handoff: autonomous", "agency corridor: redirected, intact"],
+};
+
 const systemLines = [
   "clock drift: 0.0041",
   "causal variance: nominal",
@@ -275,10 +292,15 @@ export function buildFutureLeakScript(level: number, visits: number, now = Date.
     lines.push(...seededOrder(`${seed}:entity`, entityLines).slice(0, 2));
   }
 
+  lines.push(...seededOrder(`${seed}:refinement`, refinementLinesByLevel[level] || []).slice(0, Math.min(level, 2)));
+
   const bounded = lines.slice(0, clamp(8 + level * 2, 8, 16));
   let signature = bounded.join("|");
 
-  if (signature === snapshot.lastSequenceSig) {
+  const recentSigsRaw = window.localStorage.getItem(STORAGE_KEYS.recentSignatures);
+  const recentSigs = recentSigsRaw ? recentSigsRaw.split("||").filter(Boolean).slice(-4) : [];
+
+  if (signature === snapshot.lastSequenceSig || recentSigs.includes(signature)) {
     bounded.push("mirror buffer shifted +1");
     bounded.shift();
     signature = bounded.join("|");
@@ -304,11 +326,15 @@ export function markFutureLeakTriggered(level: number, signature: string, now = 
   writeNumber(STORAGE_KEYS.eligibleSessions, 0);
   window.localStorage.setItem(STORAGE_KEYS.lastSequenceSig, signature);
 
+  const recentSigsRaw = window.localStorage.getItem(STORAGE_KEYS.recentSignatures);
+  const nextRecent = [...(recentSigsRaw ? recentSigsRaw.split("||").filter(Boolean) : []), signature].slice(-4);
+  window.localStorage.setItem(STORAGE_KEYS.recentSignatures, nextRecent.join("||"));
+
   const residual: FutureLeakResidual = {
     createdAt: now,
     expiresAt: now + DAY_MS,
-    integrityDelta: -Number((0.01 + deterministicChance(`${signature}:integrity`) * 0.02).toFixed(3)),
-    forceLearningUntil: now + 10_000,
+    integrityDelta: -Number((0.05 + deterministicChance(`${signature}:integrity`) * 0.08).toFixed(3)),
+    forceLearningUntil: now + 15_000,
     applied: false,
   };
 
@@ -354,4 +380,115 @@ export function applyFutureLeakResidual(now = Date.now()) {
     integrityDelta: residual.integrityDelta,
     forceLearning: now <= residual.forceLearningUntil,
   };
+}
+
+function readRareEvent(now = Date.now()) {
+  if (typeof window === "undefined") {
+    return { lastAt: 0, seenCount: 0, lastSignature: "" };
+  }
+
+  const raw = window.localStorage.getItem(RARE_EVENT_KEY);
+  if (!raw) {
+    return { lastAt: 0, seenCount: 0, lastSignature: "" };
+  }
+
+  try {
+    const parsed = JSON.parse(raw) as { lastAt?: number; seenCount?: number; lastSignature?: string };
+    return {
+      lastAt: Math.max(0, Math.trunc(asFinite(parsed.lastAt))),
+      seenCount: Math.max(0, Math.trunc(asFinite(parsed.seenCount))),
+      lastSignature: typeof parsed.lastSignature === "string" ? parsed.lastSignature : "",
+    };
+  } catch {
+    return { lastAt: 0, seenCount: 0, lastSignature: "" };
+  }
+}
+
+function asFinite(value: unknown) {
+  const number = typeof value === "number" ? value : Number(value);
+  return Number.isFinite(number) ? number : 0;
+}
+
+export function decideRareHistoricalEvent(now = Date.now()): RareHistoricalDecision {
+  if (typeof window === "undefined") {
+    return { shouldTrigger: false };
+  }
+
+  const presence = readPresence(now);
+  const eligible = presence.visits >= 3 && hasLayerAccess();
+  if (!eligible) {
+    return { shouldTrigger: false };
+  }
+
+  const snapshot = readRareEvent(now);
+  if (snapshot.lastAt > 0 && now - snapshot.lastAt < COOL_DOWN_MS) {
+    return { shouldTrigger: false };
+  }
+
+  const chance = 0.038;
+  const roll = deterministicChance(`${presence.firstSeen}:${presence.visits}:${snapshot.seenCount}:${now}:rare`);
+  return { shouldTrigger: roll < chance };
+}
+
+const rareEpochBlocks = [
+  "1983 > redes isoladas; enlace físico; verificação manual",
+  "2044 > protocolos globais; estado distribuído; consenso contínuo",
+  "2107 > integração neural; latência afetiva; memória expandida",
+];
+
+const rareDeviceLine = (isMobile: boolean, width: number) => {
+  if (!isMobile && width >= 1180) {
+    return "interface classificada: legacy interface";
+  }
+
+  if (isMobile) {
+    return "interface classificada: pre-implant phase";
+  }
+
+  return "interface classificada: transitional interface";
+};
+
+export function buildRareHistoricalScript(now = Date.now()): RareHistoricalScript {
+  const presence = readPresence(now);
+  const dayNumber = Math.floor(now / DAY_MS);
+  const width = window.innerWidth;
+  const isMobile = window.matchMedia("(max-width: 820px)").matches;
+  const seed = `${presence.firstSeen}:${dayNumber}:${presence.visits}:${width}`;
+  const ordered = seededOrder(`${seed}:rare`, rareEpochBlocks);
+
+  const lines = [
+    "// historical terminal replay",
+    ...ordered,
+    rareDeviceLine(isMobile, width),
+    "trace: sequence still mutating",
+  ];
+
+  const signature = lines.join("|");
+  const last = readRareEvent(now);
+  if (signature === last.lastSignature) {
+    lines[lines.length - 1] = "trace: sequence diverged";
+  }
+
+  return {
+    lines,
+    signature: lines.join("|"),
+  };
+}
+
+export function markRareHistoricalEvent(signature: string, now = Date.now()) {
+  if (typeof window === "undefined") {
+    return;
+  }
+
+  const snapshot = readRareEvent(now);
+  window.localStorage.setItem(
+    RARE_EVENT_KEY,
+    JSON.stringify({
+      lastAt: now,
+      seenCount: snapshot.seenCount + 1,
+      lastSignature: signature,
+    }),
+  );
+
+  addEvent("rare_historical_terminal", now);
 }

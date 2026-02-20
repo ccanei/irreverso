@@ -2,6 +2,7 @@ import { SystemStatus } from "../../components/SystemStatus";
 import { PresenceWhisper } from "./_components/presence-whisper";
 import { AlignmentPulse } from "./_components/alignment-pulse";
 import { FutureLeak } from "../../components/FutureLeak";
+import { RealityFragment } from "./_components/reality-fragment";
 
 export default function Home() {
   return (
@@ -31,6 +32,8 @@ export default function Home() {
 
         <SystemStatus />
       </div>
+
+      <RealityFragment />
     </main>
   );
 }

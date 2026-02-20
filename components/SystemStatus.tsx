@@ -133,11 +133,17 @@ export function SystemStatus() {
     setAlignmentPhase(phase);
     setInstanceState((current) => phaseCappedState(current, phase));
 
-    if (residual.forceLearning) {
+    const recentStrongEvent = readEventsTrail().some(
+      (event) =>
+        (event.type === "rollback_success" || event.type === "rare_historical_terminal") &&
+        Date.now() - event.t <= 15_000,
+    );
+
+    if (residual.forceLearning || recentStrongEvent) {
       setInstanceState(phaseCappedState("learning", phase));
       const resetTimer = window.setTimeout(() => {
         setInstanceState(phaseCappedState("active", phase));
-      }, 10_000);
+      }, 15_000);
 
       const tick = window.setInterval(() => {
         setLatency((prev) => {

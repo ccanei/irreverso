@@ -12,7 +12,11 @@ export default function RootLayout({
 }) {
   return (
     <html lang="pt-BR">
-      <body>{children}</body>
+      <body>
+	{/* camada:0 :: observador necessário */}
+	<meta name="irv:handshake" content="pending" />
+	{children}
+      </body>
     </html>
   );
 }

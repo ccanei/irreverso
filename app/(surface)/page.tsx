@@ -22,6 +22,9 @@ export default function Home() {
           <a href="/signals" className="enter">
             signals
           </a>
+          <a href="/transmissions" className="enter">
+            transmissions
+          </a>
         </div>
 
         <SystemStatus />

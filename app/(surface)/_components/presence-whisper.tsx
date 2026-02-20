@@ -17,10 +17,12 @@ export function PresenceWhisper() {
     const before = readPresence(now);
     const previousRoute = before.lastRoute;
 
-    trackVisit(path, now);
+    const after = trackVisit(path, now);
     startedAt.current = performance.now();
 
-    const delay = Math.floor(90 + Math.random() * 320);
+    const baseDelay = Math.floor(90 + Math.random() * 320);
+    const integrityDelay = after.integrity < 99.7 ? Math.floor(120 + Math.random() * 160) : 0;
+    const delay = baseDelay + integrityDelay;
     const timer = window.setTimeout(() => {
       let nextText = baseText;
 

@@ -121,3 +121,36 @@ html,body{
   letter-spacing:.08em;
   color:#606060;
 }
+
+.future-leak{
+  position:fixed;
+  inset:0;
+  z-index:40;
+  background:rgba(2,2,2,.86);
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  pointer-events:none;
+}
+
+.future-leak__terminal{
+  width:min(92vw,72ch);
+  max-height:68vh;
+  overflow:hidden;
+  color:#c9c9c9;
+  font-size:.76rem;
+  line-height:1.55;
+  letter-spacing:.05em;
+  opacity:.92;
+}
+
+.future-leak__line{
+  margin:0 0 .26rem;
+  white-space:nowrap;
+  animation:futureLeakType .12s linear;
+}
+
+@keyframes futureLeakType{
+  from{opacity:0}
+  to{opacity:1}
+}

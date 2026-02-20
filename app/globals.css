@@ -83,3 +83,41 @@ html,body{
   color:#4f4f4f;
   opacity:.72;
 }
+
+.layer-sheet{
+  max-width:48ch;
+}
+
+.layer-list{
+  margin:0;
+  padding:0;
+  list-style:none;
+}
+
+.layer-item{
+  margin:0 0 1.25rem;
+}
+
+.layer-id{
+  margin:0 0 .28rem;
+  font-size:.66rem;
+  letter-spacing:.09em;
+  color:#676767;
+  text-transform:lowercase;
+}
+
+.layer-fragment{
+  margin:0;
+  color:#b6b6b6;
+}
+
+.layer-fragment--corrupted{
+  color:#8d8d8d;
+}
+
+.layer-footnote{
+  margin-top:1.4rem;
+  font-size:.62rem;
+  letter-spacing:.08em;
+  color:#606060;
+}

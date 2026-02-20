@@ -23,10 +23,18 @@ html,body{
   max-width:32ch;
 }
 
-.quiet-nav{
+.quiet-links{
   margin-top:22px;
   display:flex;
   gap:16px;
+}
+
+
+.whisper{
+  margin-top:14px;
+  font-size:.78rem;
+  color:#696969;
+  letter-spacing:.04em;
 }
 
 .enter{

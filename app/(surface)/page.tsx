@@ -7,14 +7,16 @@ export default function Home() {
         <p>observação passiva</p>
         <p className="pulse">escuta contínua</p>
 
-        <nav className="quiet-nav" aria-label="rotas secundárias">
+        <p className="whisper">O medo é uma forma de reconhecimento.</p>
+
+        <div className="quiet-links">
           <a href="/archive" className="enter">
             archive
           </a>
           <a href="/signals" className="enter">
             signals
           </a>
-        </nav>
+        </div>
       </div>
     </main>
   );

@@ -15,6 +15,7 @@ export default function RootLayout({
       <body>
 	{/* camada:0 :: observador necessário */}
 	<meta name="irv:handshake" content="pending" />
+	<meta name="irv:continuity" content="echo/authorized/absence" />
 	{children}
       </body>
     </html>

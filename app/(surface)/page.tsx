@@ -1,3 +1,4 @@
+import { SystemStatus } from "../../components/SystemStatus";
 import { PresenceWhisper } from "./_components/presence-whisper";
 
 export default function Home() {
@@ -19,6 +20,8 @@ export default function Home() {
             signals
           </a>
         </div>
+
+        <SystemStatus />
       </div>
     </main>
   );

@@ -19,14 +19,44 @@ export const CANON_QUOTES = [
   "“O medo é uma forma de reconhecimento.”",
 ] as const;
 
+const SEEN_COOKIE = "irv_seen";
+const SEEN_STORAGE = "irreverso.seen";
+const MAX_SEEN_AGE_SECONDS = 180 * 24 * 60 * 60;
+
+export type SiteMode = "breach" | "stable";
+
 export const DOMINION_KEYS = {
   breachSeen: "irreverso.dominion.breachSeen",
   takeoverSeen: "irreverso.dominion.takeoverSeen",
   sessions: "irreverso.dominion.sessions",
   eventLog: "irreverso.dominion.eventLog",
+  integrityResidual: "irreverso.dominion.integrityResidual",
+  learningUntil: "irreverso.dominion.learningUntil",
 } as const;
 
 export type DominionEventType = "breach" | "takeover";
+
+export function getMode(): SiteMode {
+  if (typeof window === "undefined") return "breach";
+  const cookieSeen = document.cookie
+    .split(";")
+    .map((part) => part.trim())
+    .some((part) => part === `${SEEN_COOKIE}=1`);
+  const localSeen = window.localStorage.getItem(SEEN_STORAGE) === "true";
+  return cookieSeen || localSeen ? "stable" : "breach";
+}
+
+export function setSeen() {
+  if (typeof window === "undefined") return;
+  window.localStorage.setItem(SEEN_STORAGE, "true");
+  document.cookie = `${SEEN_COOKIE}=1; Max-Age=${MAX_SEEN_AGE_SECONDS}; Path=/; SameSite=Lax`;
+}
+
+export function resetSeen() {
+  if (typeof window === "undefined") return;
+  window.localStorage.removeItem(SEEN_STORAGE);
+  document.cookie = `${SEEN_COOKIE}=0; Max-Age=0; Path=/; SameSite=Lax`;
+}
 
 export function readNumber(key: string, fallback = 0) {
   if (typeof window === "undefined") return fallback;
@@ -37,7 +67,23 @@ export function readNumber(key: string, fallback = 0) {
 
 export function writeNumber(key: string, value: number) {
   if (typeof window === "undefined") return;
-  window.localStorage.setItem(key, String(Math.trunc(value)));
+  window.localStorage.setItem(key, String(value));
+}
+
+export function getResidualIntegrity() {
+  return Math.max(0, readNumber(DOMINION_KEYS.integrityResidual, 0));
+}
+
+export function setResidualIntegrity(next: number) {
+  writeNumber(DOMINION_KEYS.integrityResidual, Math.max(0, Math.round(next * 1000) / 1000));
+}
+
+export function getLearningUntil() {
+  return readNumber(DOMINION_KEYS.learningUntil, 0);
+}
+
+export function setLearningUntil(timestamp: number) {
+  writeNumber(DOMINION_KEYS.learningUntil, timestamp);
 }
 
 export function registerSession(now = Date.now()) {

@@ -1,3 +1,5 @@
+import { PresenceWhisper } from "./_components/presence-whisper";
+
 export default function Home() {
   return (
     <main className="center">
@@ -7,7 +9,7 @@ export default function Home() {
         <p>observação passiva</p>
         <p className="pulse">escuta contínua</p>
 
-        <p className="whisper">O medo é uma forma de reconhecimento.</p>
+        <PresenceWhisper />
 
         <div className="quiet-links">
           <a href="/archive" className="enter">

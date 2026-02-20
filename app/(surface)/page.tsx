@@ -1,15 +1,22 @@
 export default function Home() {
   return (
     <main className="center">
-      <div className="terminal">
-        <p>estabelecendo enlace</p>
-        <p>sincronizando camadas</p>
-        <p>latência: desconhecida</p>
-        <p className="pulse">interface disponível</p>
+      <div className="terminal terminal--narrow">
+        <p>camada aberta</p>
+        <p>sinais em baixa frequência</p>
+        <p>observação passiva</p>
+        <p className="pulse">escuta contínua</p>
 
-        <a href="/archive" className="enter">
-          acessar
-        </a>
+        <p className="whisper">O medo é uma forma de reconhecimento.</p>
+
+        <div className="quiet-links">
+          <a href="/archive" className="enter">
+            archive
+          </a>
+          <a href="/signals" className="enter">
+            signals
+          </a>
+        </div>
       </div>
     </main>
   );

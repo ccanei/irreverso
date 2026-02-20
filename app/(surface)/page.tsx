@@ -1,11 +1,13 @@
 import { SystemStatus } from "../../components/SystemStatus";
 import { PresenceWhisper } from "./_components/presence-whisper";
+import { AlignmentPulse } from "./_components/alignment-pulse";
 import { FutureLeak } from "../../components/FutureLeak";
 
 export default function Home() {
   return (
     <main className="center">
       <FutureLeak />
+      <AlignmentPulse />
 
       <div className="terminal terminal--narrow">
         <p>camada aberta</p>

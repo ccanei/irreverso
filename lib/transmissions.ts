@@ -2,6 +2,7 @@ import { readFutureLeak } from "./futureLeak";
 import { readEventsTrail, readPresence } from "./presence";
 
 const READ_TRANSMISSIONS_KEY = "irreverso.readTx";
+const ALIGNMENT_PHASE_KEY = "irreverso.alignmentPhase";
 const DAY_MS = 86_400_000;
 
 export type Transmission = {
@@ -157,6 +158,7 @@ export function calculateTransmissionUnlockState(now = Date.now()): Transmission
   const daysSinceFirstSeen = safeDaysSinceFirstSeen(presence.firstSeen, now);
   const hasLayerTrail = eventsTrail.some((event) => event.type === "route_layer" || event.type === "layer_read");
   const probabilityEventFired = eventsTrail.some((event) => event.type === "probability_event_fired");
+  const alignmentPhase = Math.max(0, Math.min(5, Number(window.localStorage.getItem(ALIGNMENT_PHASE_KEY) ?? 0) || 0));
 
   let score = 0;
 
@@ -167,6 +169,9 @@ export function calculateTransmissionUnlockState(now = Date.now()): Transmission
   if (futureLeak.level >= 2) score += 1;
   if (hasLayerTrail) score += 1;
   if (probabilityEventFired) score += 1;
+  if (alignmentPhase >= 2) score += 1;
+  if (alignmentPhase >= 3) score += 1;
+  if (alignmentPhase >= 4) score += 1;
 
   const unlockedCount = Math.min(8, 3 + score);
   const unlockedIds = new Set(transmissions.slice(0, unlockedCount).map((item) => item.id));

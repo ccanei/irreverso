@@ -3,67 +3,39 @@
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { addEvent } from "../../../lib/presence";
-import { calculateTransmissionUnlockState, readReadTransmissions, transmissions } from "../../../lib/transmissions";
+import { calculateUnlockedIds, readReadTransmissions, transmissions } from "../../../lib/transmissions";
 
 export default function TransmissionsPage() {
-  const [unlockedIds, setUnlockedIds] = useState<Set<string>>(new Set());
-  const [readIds, setReadIds] = useState<Set<string>>(new Set());
+  const [unlocked, setUnlocked] = useState<Set<string>>(new Set());
+  const [read, setRead] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     addEvent("route_transmissions");
-
-    const unlockState = calculateTransmissionUnlockState();
-    setUnlockedIds(unlockState.unlockedIds);
-    setReadIds(readReadTransmissions());
+    setUnlocked(calculateUnlockedIds());
+    setRead(readReadTransmissions());
   }, []);
 
-  const feed = useMemo(
+  const rows = useMemo(
     () =>
-      transmissions.map((item) => {
-        const isUnlocked = unlockedIds.has(item.id);
-        const isRead = readIds.has(item.id);
-
-        return {
-          ...item,
-          isUnlocked,
-          isRead,
-          displayTitle: isUnlocked ? item.title : "transmission: locked",
-          displaySnippet: isUnlocked
-            ? isRead && item.readSnippet
-              ? item.readSnippet
-              : item.snippet
-            : "available after alignment",
-        };
-      }),
-    [readIds, unlockedIds],
+      transmissions.map((tx) => ({
+        ...tx,
+        locked: !unlocked.has(tx.id),
+        seen: read.has(tx.id),
+      })),
+    [read, unlocked],
   );
 
   return (
-    <main className="center">
-      <div className="terminal transmissions-shell">
-        <p className="transmissions-headline">transmissions // pós-livro</p>
-
-        <ul className="transmissions-list" aria-label="feed de transmissões">
-          {feed.map((item) => (
-            <li key={item.id} className={item.isUnlocked ? "transmission-card" : "transmission-card transmission-card--locked"}>
-              <p className="transmission-meta">
-                {item.timestamp} · {item.signal}
-              </p>
-
-              {item.isUnlocked ? (
-                <Link href={`/transmissions/${item.id}`} className="transmission-link">
-                  {item.displayTitle}
-                </Link>
-              ) : (
-                <p className="transmission-link transmission-link--locked">{item.displayTitle}</p>
-              )}
-
-              <p className="transmission-snippet">{item.displaySnippet}</p>
-              {item.isRead ? <p className="transmission-read">read</p> : null}
-            </li>
-          ))}
-        </ul>
-      </div>
-    </main>
+    <section>
+      <p className="section-head">TRANSMISSIONS // leak registry</p>
+      {rows.map((tx) => (
+        <article key={tx.id} className={tx.locked ? "tx tx--locked" : "tx"}>
+          <p>{tx.title}</p>
+          <p>{tx.signal}</p>
+          {tx.locked ? <p>locked // integrity gate</p> : <Link href={`/transmissions/${tx.id}`}>{tx.snippet}</Link>}
+          {tx.seen ? <p>read</p> : null}
+        </article>
+      ))}
+    </section>
   );
 }

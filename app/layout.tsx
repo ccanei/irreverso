@@ -1,24 +1,16 @@
-import './globals.css';
-import { FutureLeak } from '../components/FutureLeak';
+import "./globals.css";
+import { AppFrame } from "../components/system/AppFrame";
 
 export const metadata = {
-  title: 'IRREVERSO',
-  description: 'interface ativa',
+  title: "IRREVERSO",
+  description: "registro interno",
 };
 
-export default function RootLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
+export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="pt-BR">
       <body>
-	{/* camada:0 :: observador necessário */}
-	<meta name="irv:handshake" content="pending" />
-	<meta name="irv:continuity" content="echo/authorized/absence" />
-	<FutureLeak />
-	{children}
+        <AppFrame>{children}</AppFrame>
       </body>
     </html>
   );

@@ -2,6 +2,7 @@
 
 import { useEffect } from "react";
 import { addEvent } from "../../../lib/presence";
+import { CANON_QUOTES } from "../../../lib/dominion";
 
 export default function Signals() {
   useEffect(() => {
@@ -9,15 +10,11 @@ export default function Signals() {
   }, []);
 
   return (
-    <main className="center">
-      <div className="terminal terminal--narrow">
-        <p>pulso 01: ruído em maré baixa</p>
-        <p>pulso 02: eco sem origem</p>
-        <p>pulso 03: retorno fragmentado</p>
-        <p>pulso 04: janela instável</p>
-
-        <p className="whisper">A rede caiu. O eco começou.</p>
-      </div>
-    </main>
+    <section>
+      <p className="section-head">SIGNALS // minimal</p>
+      <p>{CANON_QUOTES[4]}</p>
+      <p>{CANON_QUOTES[5]}</p>
+      <p>{CANON_QUOTES[6]}</p>
+    </section>
   );
 }

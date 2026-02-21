@@ -468,27 +468,88 @@ body {
   inset: 0;
   z-index: 7;
   border: 0;
-  background: rgba(8, 12, 22, 0.6);
+  background:
+    radial-gradient(circle at 18% 24%, rgba(150, 183, 255, .22), transparent 44%),
+    radial-gradient(circle at 85% 76%, rgba(106, 136, 219, .18), transparent 42%),
+    rgba(5, 8, 16, 0.78);
   display: grid;
   place-items: center;
+  padding: clamp(1rem, 4vw, 2.2rem);
 }
 .entity-profile {
-  width: min(920px, 92vw);
-  max-height: 88vh;
+  width: min(900px, 100%);
+  max-height: min(88vh, 920px);
   overflow: auto;
-  border-radius: 16px;
-  border: 1px solid rgba(189, 216, 255, .28);
-  background: rgba(228, 238, 255, 0.9);
-  color: #0a1220;
-  backdrop-filter: blur(14px);
-  padding: 1rem;
+  border-radius: 18px;
+  border: 1px solid rgba(193, 214, 255, .32);
+  background:
+    linear-gradient(170deg, rgba(232, 242, 255, .96), rgba(215, 228, 250, .93));
+  color: #152135;
+  box-shadow:
+    0 28px 56px rgba(2, 6, 16, .58),
+    inset 0 0 0 1px rgba(255, 255, 255, .22);
+  padding: clamp(1.1rem, 2.4vw, 2rem);
   text-align: left;
+  line-height: 1.65;
 }
-.profile-kicker { letter-spacing: .12em; text-transform: uppercase; font-size: .72rem; }
-.profile-summary { color: #142132; font-size: 1rem; }
-.profile-columns { display: grid; gap: .8rem; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); }
-.profile-columns p { color: #1f2f46; }
-.doc-note { margin-top: .8rem; font-weight: 600; }
+.entity-profile::before {
+  content: "";
+  position: sticky;
+  top: 0;
+  display: block;
+  height: 0;
+}
+.entity-profile h3,
+.entity-profile h4 {
+  color: #0f1c31;
+}
+.entity-profile p {
+  color: #22324a;
+}
+.profile-kicker {
+  margin: 0 0 .45rem;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  font-size: .72rem;
+  color: #2e4566;
+}
+.profile-summary {
+  margin: 0;
+  color: #1f2f48;
+  font-size: clamp(1rem, 1.4vw, 1.08rem);
+}
+.profile-part {
+  margin: .8rem 0 1rem;
+  color: #2a3e5b;
+}
+.profile-columns {
+  display: grid;
+  gap: 1.1rem;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+}
+.profile-columns h4 {
+  margin: 0 0 .55rem;
+}
+.profile-columns p {
+  margin: 0 0 .55rem;
+  color: #263a57;
+}
+.doc-note {
+  margin-top: 1rem;
+  font-weight: 600;
+  color: #1d304d;
+}
+.profile-entity,
+.profile-protocol {
+  background:
+    linear-gradient(168deg, rgba(236, 246, 255, .97), rgba(219, 232, 254, .95));
+}
+@media (max-width: 700px) {
+  .entity-profile {
+    border-radius: 14px;
+    line-height: 1.55;
+  }
+}
 
 .archive-matrix.part-i { filter: saturate(.88); }
 .archive-matrix.part-ii { filter: saturate(1.13); }

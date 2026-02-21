@@ -271,7 +271,7 @@ export default function ArchiveMatrixPage() {
 
       {selected ? (
         <button className="profile-shell" onClick={() => setSelected(null)} type="button">
-          <article className="entity-profile" onClick={(event) => event.stopPropagation()}>
+          <article className={`entity-profile profile-${selected.type.toLowerCase()}`} onClick={(event) => event.stopPropagation()}>
             <p className="profile-kicker">
               {selected.type} · {selected.status}
             </p>

@@ -5,12 +5,11 @@ import { useRouter } from "next/navigation";
 import { ERA_MATRIX, ERA_TIMELINE, getModulesForEra, type CanonModule, type EraKey } from "../../lib/eraMatrix";
 import { pulseDwell, trackCoreSession } from "../../lib/worldState";
 import { readPresence } from "../../lib/presence";
+import { useSystemState } from "../system/SystemProvider";
 
 const BOOT_KEY = "irreverso.coreBootSeen";
-const ERA_KEY = "irreverso.coreEra";
 const SOUND_KEY = "irreverso.coreSoundEnabled";
 const NUVE_COOLDOWN_KEY = "irreverso.nuveDistortionSeen";
-const ACTIVE_ERAS = [...ERA_TIMELINE];
 
 type AudioRefs = {
   ctx: AudioContext | null;
@@ -66,7 +65,7 @@ function DossierOverlay({ module, onClose }: { module: CanonModule | null; onClo
 
 export function CorePortal() {
   const router = useRouter();
-  const [era, setEra] = useState<EraKey>(2044);
+  const { activeEra: era, setActiveEra: setEra } = useSystemState();
   const [bootDone, setBootDone] = useState(false);
   const [shortBoot, setShortBoot] = useState(false);
   const [pointer, setPointer] = useState({ x: 0, y: 0 });
@@ -84,9 +83,6 @@ export function CorePortal() {
     const audio = audioRef.current;
     trackCoreSession("/core");
     const dwell = window.setInterval(() => pulseDwell(), 1000);
-
-    const savedEra = Number(window.localStorage.getItem(ERA_KEY)) as EraKey;
-    if (ACTIVE_ERAS.includes(savedEra)) setEra(savedEra);
 
     const seenBoot = window.localStorage.getItem(BOOT_KEY) === "1";
     setShortBoot(seenBoot);
@@ -215,7 +211,6 @@ export function CorePortal() {
   const changeEra = useCallback(
     (next: EraKey) => {
       setEra(next);
-      window.localStorage.setItem(ERA_KEY, String(next));
       setFocusSlug(null);
       setActiveModule(null);
       setEraTransition(true);
@@ -226,7 +221,7 @@ export function CorePortal() {
       transitionTimeoutRef.current = window.setTimeout(() => setEraTransition(false), 560);
       playTick();
     },
-    [playTick],
+    [playTick, setEra],
   );
 
   return (
@@ -298,7 +293,7 @@ export function CorePortal() {
         <p className="hud-whisper">{eraData.whisper}</p>
         {eraData.printReference ? <p className="hud-reference">Registro completo disponível em instância física.</p> : null}
         <button className="sound-toggle" onClick={() => router.push("/archive")} type="button">
-          archive matrix
+          ARCHIVE MATRIX
         </button>
         <button
           className="sound-toggle"

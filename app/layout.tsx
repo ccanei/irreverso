@@ -1,4 +1,5 @@
 import "./globals.css";
+import { SystemProvider } from "../components/system/SystemProvider";
 
 export const metadata = {
   title: "IRREVERSO",
@@ -8,7 +9,7 @@ export const metadata = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="pt-BR">
-      <body>{children}</body>
+      <body><SystemProvider>{children}</SystemProvider></body>
     </html>
   );
 }

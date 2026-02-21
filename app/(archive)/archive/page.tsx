@@ -1,11 +1,13 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import { CANON_EVENTS } from "../../../lib/bookCanon";
 import { ERA_MATRIX as eraMatrix, ERA_TIMELINE, type EraKey, type EraModule } from "../../../lib/eraMatrix";
 import { eraToPartMapper, partBoundaries, type TrilogyPart } from "../../../lib/bookStructure";
 import { readClearance, updateClearance } from "../../../lib/clearance";
 import { useSystemState } from "../../../components/system/SystemProvider";
+import { OSModeToggle } from "../../../components/system/OSModeToggle";
 
 type ArchiveType = "Entity" | "Company" | "Character" | "Protocol" | "Incident";
 type ArchiveStatus = "Ativo" | "Extinto" | "Reclassificado" | "Oculto";
@@ -66,8 +68,8 @@ function moduleToRecord(module: EraModule, year: EraKey, type: Exclude<ArchiveTy
 }
 
 export default function ArchiveMatrixPage() {
+  const router = useRouter();
   const { activeEra, setActiveEra, clearance, refreshClearance } = useSystemState();
-  const [matrixOn, setMatrixOn] = useState(true);
   const [selected, setSelected] = useState<ArchiveRecord | null>(null);
   const [partFilter, setPartFilter] = useState<TrilogyPart | "ALL">("ALL");
   const [typeFilter, setTypeFilter] = useState<ArchiveType | "ALL">("ALL");
@@ -109,7 +111,7 @@ export default function ArchiveMatrixPage() {
 
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
-      if (event.key.toLowerCase() === "a") setMatrixOn((state) => !state);
+      if (event.key.toLowerCase() === "a") router.push("/core");
       if (event.key === "Escape") setSelected(null);
     };
 
@@ -126,7 +128,7 @@ export default function ArchiveMatrixPage() {
       window.removeEventListener("keydown", onKey);
       window.clearInterval(sync);
     };
-  }, [refreshClearance]);
+  }, [refreshClearance, router]);
 
   useEffect(() => {
     const current = readClearance();
@@ -149,22 +151,30 @@ export default function ArchiveMatrixPage() {
 
   return (
     <main
-      className={`archive-matrix part-${part.toLowerCase()} ${matrixOn ? "open" : ""}`}
+      className={`archive-matrix part-${part.toLowerCase()} open`}
       onTouchStart={(event) => {
         touchStart.current = event.touches[0]?.clientX ?? null;
       }}
       onTouchEnd={(event) => {
         if (touchStart.current === null) return;
         const delta = (event.changedTouches[0]?.clientX ?? 0) - touchStart.current;
-        if (Math.abs(delta) > 70) setMatrixOn(true);
+        if (delta < -70) router.push("/core");
         touchStart.current = null;
       }}
     >
-      <section className="archive-overlay">
-        <button className="archive-toggle" onClick={() => setMatrixOn((state) => !state)} type="button">
-          {matrixOn ? "Kernel ativo" : "Ativar Archive Matrix"}
-        </button>
-        <p>atalho: tecla A · gesto lateral</p>
+      <section className="archive-header">
+        <div>
+          <p className="hud-title">IRREVERSO OS</p>
+          <p className="hud-sub">Archive Matrix // Parte I — O Ano que Não Existiu</p>
+        </div>
+        <OSModeToggle />
+      </section>
+
+      <section className="archive-status-strip" aria-label="Status do sistema">
+        <p><span>integrity</span> {clearance.level}</p>
+        <p><span>instance</span> archive-matrix</p>
+        <p><span>era</span> {activeEra}</p>
+        <p><span>clearance</span> {clearance.openedEntities.length} módulos</p>
       </section>
 
       <aside className="archive-filters">

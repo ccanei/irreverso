@@ -6,6 +6,7 @@ import { ERA_MATRIX, ERA_TIMELINE, getModulesForEra, type CanonModule, type EraK
 import { pulseDwell, trackCoreSession } from "../../lib/worldState";
 import { readPresence } from "../../lib/presence";
 import { useSystemState } from "../system/SystemProvider";
+import { OSModeToggle } from "../system/OSModeToggle";
 
 const BOOT_KEY = "irreverso.coreBootSeen";
 const SOUND_KEY = "irreverso.coreSoundEnabled";
@@ -30,11 +31,18 @@ function CoreBootSequence({ done, shortBoot }: { done: boolean; shortBoot: boole
 }
 
 function DossierOverlay({ module, onClose }: { module: CanonModule | null; onClose: () => void }) {
+  const dialogRef = useRef<HTMLElement | null>(null);
+
   useEffect(() => {
     if (!module) return;
     const onKey = (event: KeyboardEvent) => {
       if (event.key === "Escape") onClose();
     };
+
+    window.requestAnimationFrame(() => {
+      dialogRef.current?.focus();
+    });
+
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, [module, onClose]);
@@ -42,10 +50,18 @@ function DossierOverlay({ module, onClose }: { module: CanonModule | null; onClo
   if (!module) return null;
 
   return (
-    <button className="dossier-shell" onClick={onClose} type="button">
-      <section className="dossier-pane" onClick={(event) => event.stopPropagation()}>
+    <div className="dossier-shell" onClick={onClose}>
+      <section
+        ref={dialogRef}
+        aria-labelledby={`dossier-title-${module.slug}`}
+        aria-modal="true"
+        className="dossier-pane"
+        onClick={(event) => event.stopPropagation()}
+        role="dialog"
+        tabIndex={-1}
+      >
         <p className="dossier-type">{module.type}</p>
-        <h2>{module.label}</h2>
+        <h2 id={`dossier-title-${module.slug}`}>{module.label}</h2>
         <p className="dossier-summary">{module.summary}</p>
         <div className="dossier-fragments">
           {module.fragments.map((fragment) => (
@@ -59,7 +75,7 @@ function DossierOverlay({ module, onClose }: { module: CanonModule | null; onClo
           ))}
         </div>
       </section>
-    </button>
+    </div>
   );
 }
 
@@ -226,7 +242,7 @@ export function CorePortal() {
 
   return (
     <main
-      className={`core-os ${bootDone ? "boot-finished" : ""} ${nuvePulse ? "nuve-pulse" : ""} ${eraTransition ? "changing-era" : ""}`}
+      className={`core-os ${bootDone ? "boot-finished" : ""} ${nuvePulse ? "nuve-pulse" : ""} ${eraTransition ? "changing-era" : ""} ${activeModule ? "dossier-open" : ""}`}
       style={{
         ["--era-bg-a" as string]: eraData.palette.bgA,
         ["--era-bg-b" as string]: eraData.palette.bgB,
@@ -292,9 +308,7 @@ export function CorePortal() {
         <p className="hud-sub">Core Kernel // {eraData.documentLayer}</p>
         <p className="hud-whisper">{eraData.whisper}</p>
         {eraData.printReference ? <p className="hud-reference">Registro completo disponível em instância física.</p> : null}
-        <button className="sound-toggle" onClick={() => router.push("/archive")} type="button">
-          ARCHIVE MATRIX
-        </button>
+        <OSModeToggle />
         <button
           className="sound-toggle"
           onClick={() => {

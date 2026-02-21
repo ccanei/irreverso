@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import { ERA_MATRIX, ERA_TIMELINE, getModulesForEra, type CanonModule, type EraKey } from "../../lib/eraMatrix";
 import { pulseDwell, trackCoreSession } from "../../lib/worldState";
 import { readPresence } from "../../lib/presence";
@@ -64,6 +65,7 @@ function DossierOverlay({ module, onClose }: { module: CanonModule | null; onClo
 }
 
 export function CorePortal() {
+  const router = useRouter();
   const [era, setEra] = useState<EraKey>(2044);
   const [bootDone, setBootDone] = useState(false);
   const [shortBoot, setShortBoot] = useState(false);
@@ -95,6 +97,11 @@ export function CorePortal() {
 
     setSoundEnabled(window.localStorage.getItem(SOUND_KEY) === "1");
 
+    const onArchiveHotkey = (event: KeyboardEvent) => {
+      if (event.key.toLowerCase() === "a") router.push("/archive");
+    };
+    window.addEventListener("keydown", onArchiveHotkey);
+
     const presence = readPresence();
     const lastSeen = Number(window.localStorage.getItem(NUVE_COOLDOWN_KEY) || "0");
     const inCooldown = Date.now() - lastSeen < 72 * 60 * 60 * 1000;
@@ -114,10 +121,11 @@ export function CorePortal() {
       clearTimeout(timer);
       if (summaryTimeoutRef.current) window.clearTimeout(summaryTimeoutRef.current);
       if (transitionTimeoutRef.current) window.clearTimeout(transitionTimeoutRef.current);
+      window.removeEventListener("keydown", onArchiveHotkey);
       if (audio.ambience) audio.ambience.stop();
       if (audio.ctx) audio.ctx.close();
     };
-  }, []);
+  }, [router]);
 
   const eraData = useMemo(() => ERA_MATRIX[era], [era]);
   const modules = useMemo(() => getModulesForEra(era), [era]);
@@ -289,6 +297,9 @@ export function CorePortal() {
         <p className="hud-sub">Core Kernel // {eraData.documentLayer}</p>
         <p className="hud-whisper">{eraData.whisper}</p>
         {eraData.printReference ? <p className="hud-reference">Registro completo disponível em instância física.</p> : null}
+        <button className="sound-toggle" onClick={() => router.push("/archive")} type="button">
+          archive matrix
+        </button>
         <button
           className="sound-toggle"
           onClick={() => {

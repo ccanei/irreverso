@@ -164,10 +164,15 @@ export default function ArchiveMatrixPage() {
     >
       <section className="archive-header">
         <div>
-          <p className="hud-title">IRREVERSO OS</p>
-          <p className="hud-sub">Archive Matrix // Parte I — O Ano que Não Existiu</p>
+          <p className="hud-title">IRREVERSO — Fragmentos da Realidade</p>
+          <p className="hud-sub">Archive Matrix // {partLabel(part)}</p>
         </div>
-        <OSModeToggle />
+        <div className="archive-nav-actions">
+          <OSModeToggle />
+          <button className="kernel-link" onClick={() => router.push("/core")} type="button">
+            voltar ao kernel
+          </button>
+        </div>
       </section>
 
       <section className="archive-status-strip" aria-label="Status do sistema">

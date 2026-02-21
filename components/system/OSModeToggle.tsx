@@ -1,6 +1,5 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 
 type ModeRoute = "/core" | "/archive";
@@ -11,43 +10,33 @@ function resolveMode(pathname: string): OSMode {
   return pathname.startsWith("/archive") ? "archive" : "core";
 }
 
+function jumpToMode(router: ReturnType<typeof useRouter>, destination: ModeRoute) {
+  router.push(destination);
+}
+
 export function OSModeToggle() {
   const router = useRouter();
   const pathname = usePathname();
-  const [transitioning, setTransitioning] = useState(false);
-  const [target, setTarget] = useState<ModeRoute | null>(null);
   const mode = resolveMode(pathname);
 
-  const handleToggle = useCallback(() => {
-    const destination: ModeRoute = mode === "core" ? "/archive" : "/core";
-    setTransitioning(true);
-    setTarget(destination);
-  }, [mode]);
-
-  useEffect(() => {
-    if (!transitioning || !target) return;
-
-    const pushTimer = window.setTimeout(() => {
-      router.push(target);
-    }, 210);
-
-    const resetTimer = window.setTimeout(() => {
-      setTransitioning(false);
-      setTarget(null);
-    }, 470);
-
-    return () => {
-      window.clearTimeout(pushTimer);
-      window.clearTimeout(resetTimer);
-    };
-  }, [router, target, transitioning]);
-
   return (
-    <>
-      <button className="os-mode-toggle" onClick={handleToggle} type="button">
-        {mode === "core" ? "Ativar Archive Matrix" : "Kernel ativo"}
+    <div className="os-mode-toggle" role="group" aria-label="Navegação entre kernel e archive">
+      <button
+        aria-pressed={mode === "core"}
+        className={`mode-option ${mode === "core" ? "active" : ""}`}
+        onClick={() => jumpToMode(router, "/core")}
+        type="button"
+      >
+        Kernel ativo
       </button>
-      <div aria-hidden="true" className={`os-mode-transition ${transitioning ? "active" : ""}`} />
-    </>
+      <button
+        aria-pressed={mode === "archive"}
+        className={`mode-option ${mode === "archive" ? "active" : ""}`}
+        onClick={() => jumpToMode(router, "/archive")}
+        type="button"
+      >
+        Archive Matrix
+      </button>
+    </div>
   );
 }

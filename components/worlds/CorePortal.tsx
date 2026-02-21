@@ -35,8 +35,37 @@ function DossierOverlay({ module, onClose }: { module: CanonModule | null; onClo
 
   useEffect(() => {
     if (!module) return;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+
     const onKey = (event: KeyboardEvent) => {
-      if (event.key === "Escape") onClose();
+      if (event.key === "Escape") {
+        onClose();
+        return;
+      }
+
+      if (event.key !== "Tab" || !dialogRef.current) return;
+      const focusable = dialogRef.current.querySelectorAll<HTMLElement>(
+        "button, [href], input, select, textarea, [tabindex]:not([tabindex='-1'])",
+      );
+
+      if (focusable.length === 0) {
+        event.preventDefault();
+        dialogRef.current.focus();
+        return;
+      }
+
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+      const current = document.activeElement;
+
+      if (event.shiftKey && current === first) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && current === last) {
+        event.preventDefault();
+        first.focus();
+      }
     };
 
     window.requestAnimationFrame(() => {
@@ -44,7 +73,10 @@ function DossierOverlay({ module, onClose }: { module: CanonModule | null; onClo
     });
 
     window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      window.removeEventListener("keydown", onKey);
+    };
   }, [module, onClose]);
 
   if (!module) return null;
@@ -304,11 +336,14 @@ export function CorePortal() {
       </div>
 
       <section className="core-hud">
-        <p className="hud-title">IRREVERSO OS</p>
+        <p className="hud-title">IRREVERSO — Fragmentos da Realidade</p>
         <p className="hud-sub">Core Kernel // {eraData.documentLayer}</p>
         <p className="hud-whisper">{eraData.whisper}</p>
         {eraData.printReference ? <p className="hud-reference">Registro completo disponível em instância física.</p> : null}
         <OSModeToggle />
+        <button className="kernel-link" onClick={() => router.push("/archive")} type="button">
+          abrir archive matrix
+        </button>
         <button
           className="sound-toggle"
           onClick={() => {

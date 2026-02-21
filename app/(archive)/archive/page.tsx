@@ -2,18 +2,18 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { CANON_EVENTS } from "../../../lib/bookCanon";
-import { ERA_MATRIX, ERA_TIMELINE, getModulesForEra, type CanonModuleType, type EraKey } from "../../../lib/eraMatrix";
+import { ERA_MATRIX as eraMatrix, ERA_TIMELINE, type EraKey, type EraModule } from "../../../lib/eraMatrix";
 import { eraToPartMapper, partBoundaries, type TrilogyPart } from "../../../lib/bookStructure";
-import { readClearance, updateClearance, type ClearanceState } from "../../../lib/clearance";
+import { readClearance, updateClearance } from "../../../lib/clearance";
+import { useSystemState } from "../../../components/system/SystemProvider";
 
-type ArchiveType = CanonModuleType | "Incident";
+type ArchiveType = "Entity" | "Company" | "Character" | "Protocol" | "Incident";
 type ArchiveStatus = "Ativo" | "Extinto" | "Reclassificado" | "Oculto";
 type Confidentiality = "Baixo" | "Médio" | "Alto" | "Crítico";
 
 type ArchiveRecord = {
   id: string;
   year: number;
-  era: EraKey;
   part: TrilogyPart;
   type: ArchiveType;
   label: string;
@@ -26,7 +26,6 @@ type ArchiveRecord = {
   documentLayer: boolean;
 };
 
-const ERA_KEY = "irreverso.coreEra";
 const confidenceLevels: Confidentiality[] = ["Baixo", "Médio", "Alto", "Crítico"];
 const statuses: ArchiveStatus[] = ["Ativo", "Extinto", "Reclassificado", "Oculto"];
 const types: ArchiveType[] = ["Entity", "Company", "Character", "Protocol", "Incident"];
@@ -39,7 +38,7 @@ function inferStatus(year: number, type: ArchiveType): ArchiveStatus {
 }
 
 function inferConfidentiality(year: number, type: ArchiveType): Confidentiality {
-  if (type === "Protocol") return "Crítico";
+  if (type === "Protocol" || type === "Incident") return "Crítico";
   if (year >= 2045) return "Alto";
   return "Médio";
 }
@@ -48,122 +47,105 @@ function partLabel(part: TrilogyPart) {
   return partBoundaries[part].label;
 }
 
+function moduleToRecord(module: EraModule, year: EraKey, type: Exclude<ArchiveType, "Incident">, influence: string, documentLayer: boolean): ArchiveRecord {
+  const part = eraToPartMapper(year);
+  return {
+    id: `${year}-${module.slug}`,
+    year,
+    part,
+    type,
+    label: module.label,
+    summary: module.summary,
+    status: inferStatus(year, type),
+    confidentiality: inferConfidentiality(year, type),
+    timeline: [`${year}: ${module.summary}`, `Parte: ${partLabel(part)}`, `Estado operacional: ${inferStatus(year, type)}`],
+    relations: module.fragments,
+    influence,
+    documentLayer,
+  };
+}
+
 export default function ArchiveMatrixPage() {
-  const [matrixOn, setMatrixOn] = useState(false);
-  const [activeYear, setActiveYear] = useState<EraKey>(2044);
+  const { activeEra, setActiveEra, clearance, refreshClearance } = useSystemState();
+  const [matrixOn, setMatrixOn] = useState(true);
   const [selected, setSelected] = useState<ArchiveRecord | null>(null);
   const [partFilter, setPartFilter] = useState<TrilogyPart | "ALL">("ALL");
   const [typeFilter, setTypeFilter] = useState<ArchiveType | "ALL">("ALL");
   const [statusFilter, setStatusFilter] = useState<ArchiveStatus | "ALL">("ALL");
   const [confidentialityFilter, setConfidentialityFilter] = useState<Confidentiality | "ALL">("ALL");
-  const [clearance, setClearance] = useState<ClearanceState | null>(null);
   const touchStart = useRef<number | null>(null);
   const sessionStart = useRef<number>(Date.now());
 
-  const records = useMemo<ArchiveRecord[]>(() => {
-    const items: ArchiveRecord[] = [];
-    ERA_TIMELINE.forEach((era) => {
-      const snapshot = ERA_MATRIX[era];
-      const modules = getModulesForEra(era);
-      modules.forEach((module) => {
-        const part = eraToPartMapper(era);
-        const record: ArchiveRecord = {
-          id: `${era}-${module.slug}`,
-          year: era,
-          era,
-          part,
-          type: module.type,
-          label: module.label,
-          summary: module.summary,
-          status: inferStatus(era, module.type),
-          confidentiality: inferConfidentiality(era, module.type),
-          timeline: [
-            `${era}: ${module.summary}`,
-            `Parte: ${partLabel(part)}`,
-            `Estado operacional: ${inferStatus(era, module.type)}`,
-          ],
-          relations: module.fragments,
-          influence: snapshot.whisper,
-          documentLayer: Boolean(snapshot.printReference),
-        };
-        items.push(record);
-      });
+  const eraData = eraMatrix[activeEra];
 
-      CANON_EVENTS.filter((event) => event.year === era).forEach((event) => {
-        const part = eraToPartMapper(era);
-        items.push({
-          id: `${era}-${event.title}`,
-          year: era,
-          era,
-          part,
-          type: "Incident",
-          label: event.title,
-          summary: event.details.join(" · "),
-          status: "Reclassificado",
-          confidentiality: "Crítico",
-          timeline: [`${era}: ${event.title}`, ...event.details],
-          relations: event.related,
-          influence: "Incidente dominante no eixo temporal.",
-          documentLayer: era >= 2044,
-        });
+  const records = useMemo<ArchiveRecord[]>(() => {
+    const items: ArchiveRecord[] = [
+      ...eraData.entities.map((item) => moduleToRecord(item, activeEra, "Entity", eraData.whisper, Boolean(eraData.printReference))),
+      ...eraData.companies.map((item) => moduleToRecord(item, activeEra, "Company", eraData.whisper, Boolean(eraData.printReference))),
+      ...eraData.characters.map((item) => moduleToRecord(item, activeEra, "Character", eraData.whisper, Boolean(eraData.printReference))),
+      ...eraData.protocols.map((item) => moduleToRecord(item, activeEra, "Protocol", eraData.whisper, Boolean(eraData.printReference))),
+    ];
+
+    CANON_EVENTS.filter((event) => event.year === activeEra).forEach((event) => {
+      const part = eraToPartMapper(activeEra);
+      items.push({
+        id: `${activeEra}-${event.title}`,
+        year: activeEra,
+        part,
+        type: "Incident",
+        label: event.title,
+        summary: event.details.join(" · "),
+        status: "Reclassificado",
+        confidentiality: "Crítico",
+        timeline: [`${activeEra}: ${event.title}`, ...event.details],
+        relations: event.related,
+        influence: "Incidente dominante no eixo temporal.",
+        documentLayer: activeEra >= 2044,
       });
     });
+
     return items;
-  }, []);
+  }, [activeEra, eraData]);
 
   useEffect(() => {
-    const saved = Number(window.localStorage.getItem(ERA_KEY));
-    if (ERA_TIMELINE.includes(saved as EraKey)) setActiveYear(saved as EraKey);
-
     const onKey = (event: KeyboardEvent) => {
       if (event.key.toLowerCase() === "a") setMatrixOn((state) => !state);
       if (event.key === "Escape") setSelected(null);
     };
-    const onStorage = (event: StorageEvent) => {
-      if (event.key !== ERA_KEY || !event.newValue) return;
-      const value = Number(event.newValue) as EraKey;
-      if (ERA_TIMELINE.includes(value)) setActiveYear(value);
-    };
 
     window.addEventListener("keydown", onKey);
-    window.addEventListener("storage", onStorage);
     const sync = window.setInterval(() => {
-      const value = Number(window.localStorage.getItem(ERA_KEY)) as EraKey;
-      if (ERA_TIMELINE.includes(value)) setActiveYear((current) => (current === value ? current : value));
-      setClearance(
-        updateClearance({
-          sessionMs: Date.now() - sessionStart.current,
-        }),
-      );
+      updateClearance({
+        sessionMs: Date.now() - sessionStart.current,
+      });
+      refreshClearance();
     }, 1200);
 
-    setClearance(readClearance());
+    refreshClearance();
     return () => {
       window.removeEventListener("keydown", onKey);
-      window.removeEventListener("storage", onStorage);
       window.clearInterval(sync);
     };
-  }, []);
+  }, [refreshClearance]);
 
   useEffect(() => {
-    if (!matrixOn) return;
     const current = readClearance();
-    if (current.erasVisited.includes(activeYear)) return;
-    setClearance(updateClearance({ erasVisited: [...current.erasVisited, activeYear], interactions: current.interactions + 1 }));
-  }, [activeYear, matrixOn]);
+    if (current.erasVisited.includes(activeEra)) return;
+    updateClearance({ erasVisited: [...current.erasVisited, activeEra], interactions: current.interactions + 1 });
+    refreshClearance();
+  }, [activeEra, refreshClearance]);
 
   const filtered = useMemo(() => {
     return records.filter((record) => {
-      if (record.era !== activeYear) return false;
       if (partFilter !== "ALL" && record.part !== partFilter) return false;
       if (typeFilter !== "ALL" && record.type !== typeFilter) return false;
       if (statusFilter !== "ALL" && record.status !== statusFilter) return false;
       if (confidentialityFilter !== "ALL" && record.confidentiality !== confidentialityFilter) return false;
       return true;
     });
-  }, [records, activeYear, partFilter, typeFilter, statusFilter, confidentialityFilter]);
+  }, [records, partFilter, typeFilter, statusFilter, confidentialityFilter]);
 
-  const part = eraToPartMapper(activeYear);
+  const part = eraToPartMapper(activeEra);
 
   return (
     <main
@@ -185,89 +167,87 @@ export default function ArchiveMatrixPage() {
         <p>atalho: tecla A · gesto lateral</p>
       </section>
 
-      {matrixOn ? (
-        <>
-          <aside className="archive-filters">
-            <h2>Filtros Operacionais</h2>
-            <label>
-              Era
-              <select value={activeYear} onChange={(event) => setActiveYear(Number(event.target.value) as EraKey)}>
-                {ERA_TIMELINE.map((era) => (
-                  <option value={era} key={era}>
-                    {era}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <label>
-              Parte
-              <select value={partFilter} onChange={(event) => setPartFilter(event.target.value as TrilogyPart | "ALL")}>
-                <option value="ALL">Todas</option>
-                <option value="I">I</option>
-                <option value="II">II</option>
-                <option value="III">III</option>
-              </select>
-            </label>
-            <label>
-              Tipo
-              <select value={typeFilter} onChange={(event) => setTypeFilter(event.target.value as ArchiveType | "ALL")}>
-                <option value="ALL">Todos</option>
-                {types.map((type) => (
-                  <option value={type} key={type}>
-                    {type}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <label>
-              Status
-              <select value={statusFilter} onChange={(event) => setStatusFilter(event.target.value as ArchiveStatus | "ALL")}>
-                <option value="ALL">Todos</option>
-                {statuses.map((status) => (
-                  <option value={status} key={status}>
-                    {status}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <label>
-              Confidencialidade
-              <select value={confidentialityFilter} onChange={(event) => setConfidentialityFilter(event.target.value as Confidentiality | "ALL")}>
-                <option value="ALL">Todos</option>
-                {confidenceLevels.map((level) => (
-                  <option value={level} key={level}>
-                    {level}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <p className="clearance">Clearance: {clearance?.level ?? "CIVIL"}</p>
-          </aside>
-
-          <section className="archive-grid" aria-live="polite">
-            {filtered.map((record, index) => (
-              <button
-                key={record.id}
-                className={`archive-card ${record.year === activeYear ? "dominant" : ""}`}
-                style={{ animationDelay: `${index * 40}ms` }}
-                onClick={() => {
-                  setSelected(record);
-                  const current = readClearance();
-                  const openedEntities = current.openedEntities.includes(record.id) ? current.openedEntities : [...current.openedEntities, record.id];
-                  setClearance(updateClearance({ interactions: current.interactions + 1, openedEntities }));
-                }}
-                type="button"
-              >
-                <small>
-                  {record.type} · {record.year} · {record.status}
-                </small>
-                <strong>{record.label}</strong>
-                <p>{record.summary}</p>
-              </button>
+      <aside className="archive-filters">
+        <h2>Filtros Operacionais</h2>
+        <label>
+          Era
+          <select value={activeEra} onChange={(event) => setActiveEra(Number(event.target.value) as EraKey)}>
+            {ERA_TIMELINE.map((era) => (
+              <option value={era} key={era}>
+                {era}
+              </option>
             ))}
-          </section>
-        </>
-      ) : null}
+          </select>
+        </label>
+        <label>
+          Parte
+          <select value={partFilter} onChange={(event) => setPartFilter(event.target.value as TrilogyPart | "ALL")}>
+            <option value="ALL">Todas</option>
+            <option value="I">I</option>
+            <option value="II">II</option>
+            <option value="III">III</option>
+          </select>
+        </label>
+        <label>
+          Tipo
+          <select value={typeFilter} onChange={(event) => setTypeFilter(event.target.value as ArchiveType | "ALL")}>
+            <option value="ALL">Todos</option>
+            {types.map((type) => (
+              <option value={type} key={type}>
+                {type}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label>
+          Status
+          <select value={statusFilter} onChange={(event) => setStatusFilter(event.target.value as ArchiveStatus | "ALL")}>
+            <option value="ALL">Todos</option>
+            {statuses.map((status) => (
+              <option value={status} key={status}>
+                {status}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label>
+          Confidencialidade
+          <select value={confidentialityFilter} onChange={(event) => setConfidentialityFilter(event.target.value as Confidentiality | "ALL")}>
+            <option value="ALL">Todos</option>
+            {confidenceLevels.map((level) => (
+              <option value={level} key={level}>
+                {level}
+              </option>
+            ))}
+          </select>
+        </label>
+        <p className="clearance">Clearance: {clearance.level}</p>
+      </aside>
+
+      <section className="archive-grid" aria-live="polite">
+        {filtered.length === 0 ? <p>Arquivo ainda não classificado para esta era.</p> : null}
+        {filtered.map((record, index) => (
+          <button
+            key={record.id}
+            className={`archive-card ${record.year === activeEra ? "dominant" : ""}`}
+            style={{ animationDelay: `${index * 40}ms` }}
+            onClick={() => {
+              setSelected(record);
+              const current = readClearance();
+              const openedEntities = current.openedEntities.includes(record.id) ? current.openedEntities : [...current.openedEntities, record.id];
+              updateClearance({ interactions: current.interactions + 1, openedEntities });
+              refreshClearance();
+            }}
+            type="button"
+          >
+            <small>
+              {record.type} · {record.year} · {record.status}
+            </small>
+            <strong>{record.label}</strong>
+            <p>{record.summary}</p>
+          </button>
+        ))}
+      </section>
 
       {selected ? (
         <button className="profile-shell" onClick={() => setSelected(null)} type="button">

@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { CORE_ERAS, CORE_MODULES, type CanonModule, type EraKey } from "../../lib/coreCanon";
+import { ERA_MATRIX, ERA_TIMELINE, getModulesForEra, type CanonModule, type EraKey } from "../../lib/eraMatrix";
 import { pulseDwell, trackCoreSession } from "../../lib/worldState";
 import { readPresence } from "../../lib/presence";
 
@@ -9,14 +9,13 @@ const BOOT_KEY = "irreverso.coreBootSeen";
 const ERA_KEY = "irreverso.coreEra";
 const SOUND_KEY = "irreverso.coreSoundEnabled";
 const NUVE_COOLDOWN_KEY = "irreverso.nuveDistortionSeen";
-const ACTIVE_ERAS = CORE_ERAS.map((era) => era.year);
+const ACTIVE_ERAS = [...ERA_TIMELINE];
 
 type AudioRefs = {
   ctx: AudioContext | null;
   ambience: OscillatorNode | null;
   ambienceGain: GainNode | null;
 };
-
 
 function CoreBootSequence({ done, shortBoot }: { done: boolean; shortBoot: boolean }) {
   return (
@@ -25,7 +24,7 @@ function CoreBootSequence({ done, shortBoot }: { done: boolean; shortBoot: boole
       <p className="boot-rule" />
       <p>core kernel handshake...</p>
       <p>temporal auth lattice aligned</p>
-      <p>presence route: /core // PARTE I</p>
+      <p>presence route: /core // document layer sync</p>
     </div>
   );
 }
@@ -34,9 +33,7 @@ function DossierOverlay({ module, onClose }: { module: CanonModule | null; onClo
   useEffect(() => {
     if (!module) return;
     const onKey = (event: KeyboardEvent) => {
-      if (event.key === "Escape") {
-        onClose();
-      }
+      if (event.key === "Escape") onClose();
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
@@ -73,10 +70,12 @@ export function CorePortal() {
   const [pointer, setPointer] = useState({ x: 0, y: 0 });
   const [activeModule, setActiveModule] = useState<CanonModule | null>(null);
   const [focusSlug, setFocusSlug] = useState<string | null>(null);
-  const [dialVisible, setDialVisible] = useState(false);
   const [soundEnabled, setSoundEnabled] = useState(false);
   const [nuvePulse, setNuvePulse] = useState(false);
-  const scrollDebounceRef = useRef<number | null>(null);
+  const [eraTransition, setEraTransition] = useState(false);
+  const [eraSummaryVisible, setEraSummaryVisible] = useState(false);
+  const summaryTimeoutRef = useRef<number | null>(null);
+  const transitionTimeoutRef = useRef<number | null>(null);
   const audioRef = useRef<AudioRefs>({ ctx: null, ambience: null, ambienceGain: null });
 
   useEffect(() => {
@@ -89,29 +88,12 @@ export function CorePortal() {
 
     const seenBoot = window.localStorage.getItem(BOOT_KEY) === "1";
     setShortBoot(seenBoot);
-    const timer = window.setTimeout(
-      () => {
-        setBootDone(true);
-        window.localStorage.setItem(BOOT_KEY, "1");
-      },
-      seenBoot ? 980 : 4400,
-    );
+    const timer = window.setTimeout(() => {
+      setBootDone(true);
+      window.localStorage.setItem(BOOT_KEY, "1");
+    }, seenBoot ? 980 : 4400);
 
     setSoundEnabled(window.localStorage.getItem(SOUND_KEY) === "1");
-
-    const handleShift = (event: KeyboardEvent) => {
-      if (event.key === "Shift") setDialVisible(event.type === "keydown");
-    };
-
-    const handleWheel = () => {
-      setDialVisible(true);
-      if (scrollDebounceRef.current) window.clearTimeout(scrollDebounceRef.current);
-      scrollDebounceRef.current = window.setTimeout(() => setDialVisible(false), 1200);
-    };
-
-    window.addEventListener("keydown", handleShift);
-    window.addEventListener("keyup", handleShift);
-    window.addEventListener("wheel", handleWheel, { passive: true });
 
     const presence = readPresence();
     const lastSeen = Number(window.localStorage.getItem(NUVE_COOLDOWN_KEY) || "0");
@@ -130,25 +112,24 @@ export function CorePortal() {
     return () => {
       clearInterval(dwell);
       clearTimeout(timer);
-      if (scrollDebounceRef.current) window.clearTimeout(scrollDebounceRef.current);
-      window.removeEventListener("keydown", handleShift);
-      window.removeEventListener("keyup", handleShift);
-      window.removeEventListener("wheel", handleWheel);
+      if (summaryTimeoutRef.current) window.clearTimeout(summaryTimeoutRef.current);
+      if (transitionTimeoutRef.current) window.clearTimeout(transitionTimeoutRef.current);
       if (audio.ambience) audio.ambience.stop();
       if (audio.ctx) audio.ctx.close();
     };
   }, []);
 
-  const eraData = useMemo(() => CORE_ERAS.find((item) => item.year === era) || CORE_ERAS[0], [era]);
+  const eraData = useMemo(() => ERA_MATRIX[era], [era]);
+  const modules = useMemo(() => getModulesForEra(era), [era]);
 
   const moduleOrbits = useMemo(() => {
-    return CORE_MODULES.map((module, index) => {
-      const phase = (index / CORE_MODULES.length) * Math.PI * 2;
-      const radius = 24 + (index % 4) * 9 + (era % 7);
-      const drift = ((era + index * 3) % 12) * 0.09;
+    return modules.map((module, index) => {
+      const phase = (index / Math.max(modules.length, 1)) * Math.PI * 2;
+      const radius = 21 + (index % 4) * 8 + (era % 6) + eraData.kernel.moduleDensity * 8;
+      const drift = ((era + index * 5) % 14) * 0.08;
       return { module, phase, radius, drift };
     });
-  }, [era]);
+  }, [modules, era, eraData.kernel.moduleDensity]);
 
   const ensureAudio = useCallback(() => {
     const state = audioRef.current;
@@ -156,20 +137,28 @@ export function CorePortal() {
       const ctx = new window.AudioContext();
       const ambience = ctx.createOscillator();
       ambience.type = "triangle";
-      ambience.frequency.value = 52;
       const ambienceGain = ctx.createGain();
-      ambienceGain.gain.value = 0;
+      ambienceGain.gain.value = 0.0001;
       ambience.connect(ambienceGain).connect(ctx.destination);
       ambience.start();
       state.ctx = ctx;
       state.ambience = ambience;
       state.ambienceGain = ambienceGain;
     }
-    if (state.ctx?.state === "suspended") {
-      state.ctx.resume();
-    }
+    if (state.ctx?.state === "suspended") state.ctx.resume();
     return state;
   }, []);
+
+  useEffect(() => {
+    const state = audioRef.current;
+    if (!state.ambience || !state.ambienceGain || !state.ctx) return;
+    const t = state.ctx.currentTime;
+    state.ambience.frequency.setValueAtTime(46 + eraData.kernel.ambience * 32, t);
+    if (soundEnabled) {
+      state.ambienceGain.gain.cancelScheduledValues(t);
+      state.ambienceGain.gain.linearRampToValueAtTime(0.006 + eraData.kernel.ambience * 0.012, t + 0.35);
+    }
+  }, [eraData.kernel.ambience, soundEnabled]);
 
   const playTick = useCallback(() => {
     if (!soundEnabled) return;
@@ -215,23 +204,35 @@ export function CorePortal() {
     drop.stop(t + 0.22);
   }, [ensureAudio, soundEnabled]);
 
-  const changeEra = useCallback((next: EraKey) => {
-    setEra(next);
-    window.localStorage.setItem(ERA_KEY, String(next));
-    setFocusSlug(null);
-    playTick();
-  }, [playTick]);
-
+  const changeEra = useCallback(
+    (next: EraKey) => {
+      setEra(next);
+      window.localStorage.setItem(ERA_KEY, String(next));
+      setFocusSlug(null);
+      setActiveModule(null);
+      setEraTransition(true);
+      setEraSummaryVisible(true);
+      if (summaryTimeoutRef.current) window.clearTimeout(summaryTimeoutRef.current);
+      if (transitionTimeoutRef.current) window.clearTimeout(transitionTimeoutRef.current);
+      summaryTimeoutRef.current = window.setTimeout(() => setEraSummaryVisible(false), 4600);
+      transitionTimeoutRef.current = window.setTimeout(() => setEraTransition(false), 560);
+      playTick();
+    },
+    [playTick],
+  );
 
   return (
     <main
-      className={`core-os ${bootDone ? "boot-finished" : ""} ${nuvePulse ? "nuve-pulse" : ""}`}
+      className={`core-os ${bootDone ? "boot-finished" : ""} ${nuvePulse ? "nuve-pulse" : ""} ${eraTransition ? "changing-era" : ""}`}
       style={{
         ["--era-bg-a" as string]: eraData.palette.bgA,
         ["--era-bg-b" as string]: eraData.palette.bgB,
         ["--era-accent" as string]: eraData.palette.accent,
         ["--era-fog" as string]: eraData.palette.fog,
         ["--bloom" as string]: String(eraData.palette.bloom),
+        ["--kernel-breathe-ms" as string]: `${eraData.kernel.breatheMs}ms`,
+        ["--kernel-distortion" as string]: String(eraData.kernel.distortion),
+        ["--module-density" as string]: String(eraData.kernel.moduleDensity),
         ["--px" as string]: String(pointer.x),
         ["--py" as string]: String(pointer.y),
       }}
@@ -262,11 +263,11 @@ export function CorePortal() {
           const focused = focusSlug === module.slug;
           return (
             <button
-              key={module.slug}
+              key={`${era}-${module.slug}`}
               className={`orbital-module ${focused ? "focused" : ""}`}
               style={{
                 transform: `translate3d(calc(-50% + ${x}vmin), calc(-50% + ${y}vmin), 0px) rotateX(${(index % 5) * 4 - 8}deg)`,
-                animationDelay: `${index * -0.6}s`,
+                animationDelay: `${index * -0.5}s`,
               }}
               onMouseEnter={() => setFocusSlug(module.slug)}
               onClick={() => {
@@ -285,8 +286,9 @@ export function CorePortal() {
 
       <section className="core-hud">
         <p className="hud-title">IRREVERSO OS</p>
-        <p className="hud-sub">Core Kernel // PARTE I</p>
+        <p className="hud-sub">Core Kernel // {eraData.documentLayer}</p>
         <p className="hud-whisper">{eraData.whisper}</p>
+        {eraData.printReference ? <p className="hud-reference">Registro completo disponível em instância física.</p> : null}
         <button
           className="sound-toggle"
           onClick={() => {
@@ -315,11 +317,18 @@ export function CorePortal() {
         </button>
       </section>
 
-      <section className={`era-dial ${dialVisible ? "visible" : ""}`}>
-        {CORE_ERAS.map((item) => (
-          <button key={item.year} onClick={() => changeEra(item.year)} className={item.year === era ? "active" : ""} type="button">
-            {item.year}
+      <section className="era-dial visible">
+        {ERA_TIMELINE.map((item) => (
+          <button key={item} onClick={() => changeEra(item)} className={item === era ? "active" : ""} type="button">
+            {item}
           </button>
+        ))}
+      </section>
+
+      <section className={`era-summary ${eraSummaryVisible ? "visible" : ""}`}>
+        <p>{era}</p>
+        {eraData.summary.map((line) => (
+          <p key={line}>{line}</p>
         ))}
       </section>
 

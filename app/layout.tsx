@@ -1,5 +1,6 @@
 import "./globals.css";
 import { SystemProvider } from "../components/system/SystemProvider";
+import { IntrusionTransmission } from "../components/IntrusionTransmission";
 
 export const metadata = {
   title: "IRREVERSO",
@@ -9,7 +10,7 @@ export const metadata = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="pt-BR">
-      <body><SystemProvider>{children}</SystemProvider></body>
+      <body><SystemProvider>{children}<IntrusionTransmission /></SystemProvider></body>
     </html>
   );
 }

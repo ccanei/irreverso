@@ -94,6 +94,8 @@ a { color: #d6e0ef; text-decoration: none; }
     linear-gradient(135deg, var(--era-bg-a), var(--era-bg-b));
   color: #ecf2ff;
   isolation: isolate;
+  transition: background 560ms ease, filter 560ms ease;
+  filter: saturate(calc(1 + var(--kernel-distortion) * .4));
 }
 
 .core-boot {
@@ -139,7 +141,9 @@ a { color: #d6e0ef; text-decoration: none; }
   height: 28vmin;
   transform-style: preserve-3d;
   transform: translate3d(calc(-50% + var(--px) * -3vmin), calc(-50% + var(--py) * -3vmin), 0px);
-  animation: kernelDrift 14s ease-in-out infinite;
+  animation: kernelDrift calc(var(--kernel-breathe-ms) * 2.2) ease-in-out infinite;
+  transition: transform 520ms ease, filter 520ms ease;
+  filter: blur(calc(var(--kernel-distortion) * 1.2px));
   z-index: 3;
 }
 .kernel-core {
@@ -148,7 +152,7 @@ a { color: #d6e0ef; text-decoration: none; }
   border-radius: 38% 62% 58% 42% / 41% 45% 55% 59%;
   background: radial-gradient(circle at 35% 32%, rgba(239, 244, 255, 0.92), color-mix(in srgb, var(--era-accent) 35%, #10151f) 50%, rgba(8, 10, 16, 0.2) 100%);
   filter: drop-shadow(0 0 calc(3.8vmin * var(--bloom)) color-mix(in srgb, var(--era-accent) 45%, transparent));
-  animation: corePulse 7s ease-in-out infinite;
+  animation: corePulse var(--kernel-breathe-ms) ease-in-out infinite;
 }
 .kernel-ring {
   position: absolute;
@@ -175,12 +179,13 @@ a { color: #d6e0ef; text-decoration: none; }
 .shard-b { transform: rotate(-45deg) translateX(8vmin); }
 .shard-c { transform: rotate(145deg) translateX(-7vmin) translateY(4vmin); }
 
-.module-field { position: absolute; inset: 0; z-index: 4; }
+.module-field { position: absolute; inset: 0; z-index: 4; transition: transform 520ms ease, opacity 520ms ease; }
 .orbital-module {
   position: absolute;
   left: 50%;
   top: 50%;
   min-width: 9.5rem;
+  opacity: calc(.62 + var(--module-density) * .4);
   border: 0;
   border-radius: 999px;
   padding: .62rem .95rem;
@@ -191,7 +196,7 @@ a { color: #d6e0ef; text-decoration: none; }
   gap: .15rem;
   backdrop-filter: blur(8px);
   box-shadow: 0 0 0 1px rgba(210, 224, 250, 0.14), 0 12px 28px rgba(0, 0, 0, 0.36);
-  transition: transform 360ms ease, box-shadow 360ms ease, background 350ms ease;
+  transition: transform 360ms ease, box-shadow 360ms ease, background 350ms ease, opacity 340ms ease;
   animation: moduleFloat 10s ease-in-out infinite;
 }
 .orbital-module small { opacity: .75; letter-spacing: .08em; text-transform: uppercase; font-size: .61rem; }
@@ -227,6 +232,8 @@ a { color: #d6e0ef; text-decoration: none; }
 
 .era-dial {
   position: absolute;
+  max-width: min(92vw, 860px);
+  flex-wrap: wrap;
   right: clamp(1rem, 2.7vw, 2.1rem);
   bottom: clamp(1rem, 3vh, 2rem);
   z-index: 8;
@@ -238,14 +245,51 @@ a { color: #d6e0ef; text-decoration: none; }
 }
 .era-dial.visible { opacity: 1; transform: translateY(0); }
 .era-dial button {
-  border: 0;
-  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  padding: .34rem .68rem;
+  background: color-mix(in srgb, var(--era-bg-b) 76%, transparent);
   color: rgba(234, 240, 255, 0.7);
   font-size: .72rem;
   letter-spacing: .13em;
+  transition: transform 260ms ease, color 260ms ease, border-color 260ms ease, box-shadow 260ms ease, background 260ms ease;
 }
-.era-dial button.active { color: #fff; text-shadow: 0 0 16px color-mix(in srgb, var(--era-accent) 60%, transparent); }
+.era-dial button.active {
+  color: #fff;
+  border-color: color-mix(in srgb, var(--era-accent) 62%, rgba(255,255,255,.35));
+  background: color-mix(in srgb, var(--era-accent) 23%, rgba(16, 20, 30, 0.72));
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--era-accent) 18%, transparent), 0 0 26px color-mix(in srgb, var(--era-accent) 35%, transparent);
+  transform: translateY(-1px);
+  text-shadow: 0 0 16px color-mix(in srgb, var(--era-accent) 60%, transparent);
+  animation: eraFocus 1200ms ease;
+ }
 
+.changing-era .module-field { transform: scale(1.02); opacity: .78; }
+.changing-era .kernel-shell { transform: translate3d(calc(-50% + var(--px) * -3vmin), calc(-50% + var(--py) * -3vmin), 0) scale(1.03); }
+
+
+
+.era-summary {
+  position: absolute;
+  left: 50%;
+  bottom: clamp(5.5rem, 11vh, 8rem);
+  transform: translateX(-50%) translateY(8px);
+  min-width: min(84vw, 560px);
+  z-index: 9;
+  opacity: 0;
+  pointer-events: none;
+  text-align: center;
+  padding: .85rem 1rem;
+  border-radius: .9rem;
+  backdrop-filter: blur(6px);
+  background: linear-gradient(130deg, rgba(14, 16, 24, 0.7), rgba(7, 8, 12, 0.66));
+  box-shadow: inset 0 0 0 1px rgba(232, 240, 255, 0.1);
+  transition: opacity 440ms ease, transform 460ms ease;
+}
+.era-summary.visible { opacity: 1; transform: translateX(-50%) translateY(0); }
+.era-summary p { margin: .2rem 0; line-height: 1.35; font-size: .8rem; }
+.era-summary p:first-child { letter-spacing: .16em; font-size: .68rem; text-transform: uppercase; opacity: .8; }
+.hud-reference { margin-top: .55rem; font-size: .72rem; opacity: .78; letter-spacing: .03em; }
 .dossier-shell {
   position: absolute;
   inset: 0;
@@ -314,6 +358,12 @@ a { color: #d6e0ef; text-decoration: none; }
 }
 @keyframes shimmer { from { background-position: 0% 0; } to { background-position: 220% 0; } }
 @keyframes glyphOut { from { opacity: 0; filter: blur(10px); } 35% { opacity: 1; filter: blur(0); } to { opacity: 0; filter: blur(8px); } }
+@keyframes eraFocus {
+  0% { transform: translateY(1px) scale(.98); }
+  45% { transform: translateY(-1px) scale(1.04); }
+  100% { transform: translateY(-1px) scale(1); }
+}
+
 @keyframes nuveFlash {
   0% { filter: saturate(1) contrast(1); }
   22% { filter: saturate(1.55) contrast(1.3); }

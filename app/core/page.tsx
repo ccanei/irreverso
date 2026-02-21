@@ -1,5 +1,5 @@
-import { CorePortal } from "../../components/worlds/CorePortal";
+import { CoreWorld } from "./world/CoreWorld";
 
 export default function CorePage() {
-  return <CorePortal />;
+  return <CoreWorld />;
 }

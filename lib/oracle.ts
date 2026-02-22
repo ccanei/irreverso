@@ -1,6 +1,6 @@
-import { BOOK_QUOTES, CANON_ENTITIES } from "./bookCanon";
+import { canonQuotes, searchCanon, suggestCanonicalTerm, isPost2044Query } from "./canonIndex";
 import { readClearance, type ClearanceLevel } from "./clearance";
-import { findCanonMatches, yearFromHits } from "./searchIndex";
+import { yearFromHits } from "./searchIndex";
 
 const THEORY_KEY = "irreverso.oracleTheorySeen";
 const THEORY_SEED_KEY = "irreverso.oracleTheorySeed";
@@ -14,61 +14,46 @@ export type OracleAnswer = {
 };
 
 const THEORY_POOL = [
-  { id: "t1", text: "A Parte III parece já escrita, mas em blocos mutuamente excludentes: cada decisão pública cria um arquivo paralelo com pequenas diferenças de autoria." },
-  { id: "t2", text: "Há indícios de que 2107 não é destino, e sim sandbox regulatório: versões de cidadãos testadas antes da continuidade principal." },
-  { id: "t3", text: "Os cortes de energia podem ser ensaios de sincronização social; quando as luzes voltam, o consenso já veio pré-editado." },
-  { id: "t4", text: "Alguns protocolos tratam dúvida coletiva como ameaça estatística. O futuro pode ser apenas a versão com menor atrito político." },
-  { id: "t5", text: "Relatórios sem emissor sugerem comitês temporais que votam fora do relógio civil, depois injetam decisões como fato consumado." },
-  { id: "t6", text: "A teoria dominante: memória pública virou cache. Quando enche, o sistema descarrega trechos humanos e preserva só métricas de conformidade." },
-  { id: "t7", text: "Existe suspeita de que a 'continuidade' use assinaturas de mortos como quorum silencioso para aprovar revisões do presente." },
-  { id: "t8", text: "Sinais de 2044 indicam que certos anos podem ser alugados. Quem paga decide a resolução temporal disponível ao restante da população." },
-  { id: "t9", text: "A entidade que arbitra latência talvez não preveja o futuro; talvez force cenários até que só um pareça natural." },
-  { id: "t10", text: "Parte II pode ser um treinamento de obediência sem instrutor explícito: interfaces neutras, escolhas estreitas, culpa distribuída." },
+  "Dizem que a camada assistida já escolhe quais lembranças entram no consenso diário.",
+  "Há rumores de que certos anos foram arrendados por consórcios sem rosto.",
+  "Alguns analistas juram que a Vida Autorizada testa biografias em ambientes paralelos.",
+  "Há quem diga que o futuro é só cache: a versão pública troca, a origem some.",
+  "Um comitê sem calendário pode estar votando o presente com assinaturas de mortos.",
 ];
 
 function normalize(text: string) {
   return text.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
 }
 
-function isFutureQuestion(question: string) {
-  const q = normalize(question);
-  return /(204[5-9]|20[5-9]\d|2107|parte ii|parte iii|o que vai acontecer|no futuro|futuro)/.test(q);
-}
-
 function readSeenIds() {
-  if (typeof window === "undefined") return [] as string[];
+  if (typeof window === "undefined") return [] as number[];
   try {
     const raw = window.localStorage.getItem(THEORY_KEY);
     const data = raw ? (JSON.parse(raw) as unknown) : [];
-    return Array.isArray(data) ? data.filter((item): item is string => typeof item === "string") : [];
+    return Array.isArray(data) ? data.filter((item): item is number => typeof item === "number") : [];
   } catch {
     return [];
   }
 }
 
-function writeSeenIds(ids: string[]) {
+function writeSeenIds(ids: number[]) {
   if (typeof window === "undefined") return;
   window.localStorage.setItem(THEORY_KEY, JSON.stringify(ids));
 }
 
-function seededOrder() {
-  if (typeof window === "undefined") return THEORY_POOL;
-  const existing = Number(window.localStorage.getItem(THEORY_SEED_KEY) || "0") || Date.now();
-  if (!window.localStorage.getItem(THEORY_SEED_KEY)) window.localStorage.setItem(THEORY_SEED_KEY, String(existing));
-  return [...THEORY_POOL].sort((a, b) => ((a.id.charCodeAt(1) * 31 + existing) % 97) - ((b.id.charCodeAt(1) * 31 + existing) % 97));
-}
-
-function pickTheory(): string {
+function pickTheory(question: string): string {
+  if (typeof window === "undefined") return THEORY_POOL[0];
+  const seed = Number(window.localStorage.getItem(THEORY_SEED_KEY) || "0") || question.length * 13;
+  if (!window.localStorage.getItem(THEORY_SEED_KEY)) window.localStorage.setItem(THEORY_SEED_KEY, String(seed));
   const seen = new Set(readSeenIds());
-  const ordered = seededOrder();
-  let next = ordered.find((item) => !seen.has(item.id));
-  if (!next) {
+  const orderedIndexes = THEORY_POOL.map((_, index) => index).sort((a, b) => ((a + seed) % THEORY_POOL.length) - ((b + seed) % THEORY_POOL.length));
+  let next = orderedIndexes.find((index) => !seen.has(index));
+  if (next === undefined) {
     writeSeenIds([]);
-    next = ordered[0];
+    next = orderedIndexes[0];
   }
-  if (!next) return "Há ruído demais para uma teoria estável.";
-  writeSeenIds([...seen, next.id]);
-  return next.text;
+  writeSeenIds([...seen, next]);
+  return THEORY_POOL[next];
 }
 
 function clearanceBand(level: ClearanceLevel) {
@@ -78,46 +63,32 @@ function clearanceBand(level: ClearanceLevel) {
 }
 
 export function answer(question: string, context: { era?: number; route?: string }): OracleAnswer {
-  const hits = findCanonMatches(question);
-  const future = isFutureQuestion(question);
+  const hits = searchCanon(question);
+  const future = isPost2044Query(question);
   const clearance = typeof window === "undefined" ? "CIVIL" : clearanceBand(readClearance().level);
 
   if (future) {
-    const theory = pickTheory();
+    const hint = suggestCanonicalTerm(question);
+    const theory = pickTheory(question);
     return {
       kind: "future_denied",
-      text: `Arquivo ainda não disponível para esse horizonte. ${theory}`,
+      text: `Arquivo ainda não disponível nesta camada temporal. Pista canônica: procure por ${hint} na Parte I. Teoria: ${theory}`,
     };
   }
 
   if (hits.length > 0) {
-    const era = yearFromHits(hits) || context.era;
-    const entityHint = CANON_ENTITIES.find((ent) => normalize(question).includes(normalize(ent.name)) || question.toLowerCase().includes(ent.slug));
-    const quote = BOOK_QUOTES[(hits[0].id.length + question.length) % BOOK_QUOTES.length];
-
-    const lines = [
-      `Pista canônica: ${hits[0].title}.`,
-      era ? `Referência temporal: ${era}.` : "Referência temporal parcial.",
-    ];
-
-    if (clearance !== "CIVIL") {
-      lines.push(`Sinal residual: "${quote}"`);
-    }
-
-    if (clearance === "WITNESS" && entityHint) {
-      lines.push(`Entidade associada: ${entityHint.name}.`);
-    }
-
-    return {
-      kind: "canon_hint",
-      text: lines.join(" "),
-      citations: era ? [`ERA-${era}`] : undefined,
-    };
+    const era = yearFromHits(hits.map((item, index) => ({ ...item, type: item.type === "quote" ? "QUOTE" : item.type === "era" ? "ERA" : "ENTITY", href: "/archive", canon: true, score: 100 - index })));
+    const quote = canonQuotes[(normalize(question).length + hits.length) % canonQuotes.length];
+    const lines = [`Pista canônica: ${hits[0].title}.`, `Registro: ${hits[0].snippet}`];
+    if (era) lines.push(`Referência temporal: ${era}.`);
+    if (clearance !== "CIVIL") lines.push(`Trecho: "${quote}"`);
+    return { kind: "canon_hint", text: lines.join(" "), citations: era ? [`ERA-${era}`] : undefined };
   }
 
+  const suggested = suggestCanonicalTerm(question);
   return {
     kind: "unknown",
-    text: "Sem confirmação canônica direta. Compare entidades, era e protocolo antes de concluir.",
+    text: `Sem confirmação canônica direta. Tente consultar: ${suggested}.`,
   };
 }
 

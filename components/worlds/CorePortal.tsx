@@ -1,7 +1,7 @@
 "use client";
 
+import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useRouter } from "next/navigation";
 import { ERA_MATRIX, ERA_TIMELINE, getModulesForEra, type CanonModule, type EraKey } from "../../lib/eraMatrix";
 import { pulseDwell, trackCoreSession } from "../../lib/worldState";
 import { readPresence } from "../../lib/presence";
@@ -112,7 +112,6 @@ function DossierOverlay({ module, onClose }: { module: CanonModule | null; onClo
 }
 
 export function CorePortal() {
-  const router = useRouter();
   const { activeEra: era, setActiveEra: setEra } = useSystemState();
   const [bootDone, setBootDone] = useState(false);
   const [shortBoot, setShortBoot] = useState(false);
@@ -123,8 +122,10 @@ export function CorePortal() {
   const [nuvePulse, setNuvePulse] = useState(false);
   const [eraTransition, setEraTransition] = useState(false);
   const [eraSummaryVisible, setEraSummaryVisible] = useState(false);
+  const [debugClickSlug, setDebugClickSlug] = useState<string | null>(null);
   const summaryTimeoutRef = useRef<number | null>(null);
   const transitionTimeoutRef = useRef<number | null>(null);
+  const debugTimeoutRef = useRef<number | null>(null);
   const audioRef = useRef<AudioRefs>({ ctx: null, ambience: null, ambienceGain: null });
 
   useEffect(() => {
@@ -142,7 +143,7 @@ export function CorePortal() {
     setSoundEnabled(window.localStorage.getItem(SOUND_KEY) === "1");
 
     const onArchiveHotkey = (event: KeyboardEvent) => {
-      if (event.key.toLowerCase() === "a") router.push("/archive");
+      if (event.key.toLowerCase() === "a") window.location.assign("/archive");
     };
     window.addEventListener("keydown", onArchiveHotkey);
 
@@ -165,11 +166,12 @@ export function CorePortal() {
       clearTimeout(timer);
       if (summaryTimeoutRef.current) window.clearTimeout(summaryTimeoutRef.current);
       if (transitionTimeoutRef.current) window.clearTimeout(transitionTimeoutRef.current);
+      if (debugTimeoutRef.current) window.clearTimeout(debugTimeoutRef.current);
       window.removeEventListener("keydown", onArchiveHotkey);
       if (audio.ambience) audio.ambience.stop();
       if (audio.ctx) audio.ctx.close();
     };
-  }, [router]);
+  }, []);
 
   const eraData = useMemo(() => ERA_MATRIX[era], [era]);
   const modules = useMemo(() => getModulesForEra(era), [era]);
@@ -324,6 +326,11 @@ export function CorePortal() {
               onClick={() => {
                 setFocusSlug(module.slug);
                 setActiveModule(module);
+                if (process.env.NODE_ENV === "development") {
+                  setDebugClickSlug(module.slug);
+                  if (debugTimeoutRef.current) window.clearTimeout(debugTimeoutRef.current);
+                  debugTimeoutRef.current = window.setTimeout(() => setDebugClickSlug(null), 700);
+                }
                 playUnlock();
               }}
               type="button"
@@ -335,15 +342,20 @@ export function CorePortal() {
         })}
       </div>
 
-      <section className="core-hud">
+      <div className="core-ui-layer">
+        <Link className="oracle-link" href="/oracle">
+          oracle
+        </Link>
+
+        <section className="core-hud">
         <p className="hud-title">IRREVERSO — Fragmentos da Realidade</p>
         <p className="hud-sub">Core Kernel // {eraData.documentLayer}</p>
         <p className="hud-whisper">{eraData.whisper}</p>
         {eraData.printReference ? <p className="hud-reference">Registro completo disponível em instância física.</p> : null}
         <OSModeToggle />
-        <button className="kernel-link" onClick={() => router.push("/archive")} type="button">
+        <Link className="kernel-link" href="/archive">
           abrir archive matrix
-        </button>
+        </Link>
         <button
           className="sound-toggle"
           onClick={() => {
@@ -370,22 +382,27 @@ export function CorePortal() {
         >
           sound: {soundEnabled ? "on" : "off"}
         </button>
-      </section>
+        </section>
 
-      <section className="era-dial visible">
+        <section className="era-dial visible">
         {ERA_TIMELINE.map((item) => (
           <button key={item} onClick={() => changeEra(item)} className={item === era ? "active" : ""} type="button">
             {item}
           </button>
         ))}
-      </section>
+        </section>
 
-      <section className={`era-summary ${eraSummaryVisible ? "visible" : ""}`}>
+        <section className={`era-summary ${eraSummaryVisible ? "visible" : ""}`}>
         <p>{era}</p>
         {eraData.summary.map((line) => (
           <p key={line}>{line}</p>
         ))}
-      </section>
+        </section>
+
+        {process.env.NODE_ENV === "development" && debugClickSlug ? (
+          <p className="debug-click-toast">clicked: {debugClickSlug}</p>
+        ) : null}
+      </div>
 
       {nuvePulse ? <div className="nuve-glyph" /> : null}
       <DossierOverlay module={activeModule} onClose={() => setActiveModule(null)} />

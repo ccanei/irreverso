@@ -109,6 +109,13 @@ export default function ArchiveMatrixPage() {
     return items;
   }, [activeEra, eraData]);
 
+
+  useEffect(() => {
+    const eraParam = Number(new URLSearchParams(window.location.search).get("era"));
+    if (!Number.isFinite(eraParam)) return;
+    if (!ERA_TIMELINE.includes(eraParam as EraKey)) return;
+    if (eraParam !== activeEra) setActiveEra(eraParam as EraKey);
+  }, [activeEra, setActiveEra]);
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
       if (event.key.toLowerCase() === "a") router.push("/core");
@@ -169,9 +176,9 @@ export default function ArchiveMatrixPage() {
         </div>
         <div className="archive-nav-actions">
           <OSModeToggle />
-          <button className="kernel-link" onClick={() => router.push("/core")} type="button">
+          <a className="kernel-link" href="/core">
             voltar ao kernel
-          </button>
+          </a>
         </div>
       </section>
 

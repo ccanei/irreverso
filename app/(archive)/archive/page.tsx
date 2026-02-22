@@ -119,7 +119,10 @@ export default function ArchiveMatrixPage() {
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
       if (event.key.toLowerCase() === "a") router.push("/core");
-      if (event.key === "Escape") setSelected(null);
+      if (event.key === "Escape") {
+        if (selected) setSelected(null);
+        else router.push("/core");
+      }
     };
 
     window.addEventListener("keydown", onKey);
@@ -135,7 +138,7 @@ export default function ArchiveMatrixPage() {
       window.removeEventListener("keydown", onKey);
       window.clearInterval(sync);
     };
-  }, [refreshClearance, router]);
+  }, [refreshClearance, router, selected]);
 
   useEffect(() => {
     const current = readClearance();
@@ -176,9 +179,9 @@ export default function ArchiveMatrixPage() {
         </div>
         <div className="archive-nav-actions">
           <OSModeToggle />
-          <a className="kernel-link" href="/core">
+          <button className="kernel-link" type="button" onClick={() => router.push("/core")}>
             voltar ao kernel
-          </a>
+          </button>
         </div>
       </section>
 

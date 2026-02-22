@@ -785,3 +785,86 @@ body {
 .scan { position: relative; overflow: hidden; }
 .scan::after { content: ""; position: absolute; inset: 0; background: linear-gradient(180deg, transparent, rgba(166, 199, 255, .08), transparent); animation: scanline 3.2s linear infinite; pointer-events: none; }
 @keyframes scanline { from { transform: translateY(-100%); } to { transform: translateY(120%); } }
+
+.nuve-dock-wrap {
+  position: absolute;
+  left: clamp(.65rem, 1.8vw, 1rem);
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 35;
+  pointer-events: auto;
+}
+.nuve-dock {
+  writing-mode: vertical-rl;
+  transform: rotate(180deg);
+  border: 1px solid rgba(173, 205, 255, .34);
+  background: rgba(7, 12, 22, .72);
+  color: #e8f1ff;
+  border-radius: 999px;
+  padding: .7rem .45rem;
+  display: grid;
+  gap: .45rem;
+  letter-spacing: .08em;
+}
+.nuve-dock small { font-size: .62rem; opacity: .76; }
+.nuve-console {
+  position: absolute;
+  left: 2.8rem;
+  top: 50%;
+  transform: translateY(-50%);
+  width: min(86vw, 330px);
+  border: 1px solid rgba(173, 205, 255, .3);
+  background: rgba(7, 11, 20, .92);
+  border-radius: 12px;
+  padding: .7rem;
+  display: grid;
+  gap: .55rem;
+}
+.nuve-console-log { display: grid; gap: .35rem; max-height: 180px; overflow: auto; }
+.nuve-console input { width: 100%; background: rgba(2, 7, 14, .95); color: #ecf4ff; border: 1px solid rgba(171, 203, 255, .25); border-radius: 8px; padding: .5rem .55rem; }
+
+.core-search { margin-top: .8rem; display: grid; gap: .5rem; }
+.core-search input { background: rgba(3, 8, 14, .92); color: #eaf2ff; border: 1px solid rgba(164, 196, 245, .28); border-radius: 9px; padding: .5rem .6rem; }
+.core-search-results { display: grid; gap: .45rem; max-height: 220px; overflow: auto; }
+.core-search-results button { text-align: left; border: 1px solid rgba(170, 198, 248, .24); background: rgba(9, 15, 25, .84); color: #ebf3ff; border-radius: 9px; padding: .5rem .58rem; cursor: pointer; }
+.core-search-results button p { margin: .22rem 0; line-height: 1.5; }
+.core-search-results button span { font-size: .72rem; opacity: .82; }
+.core-search-empty { margin: 0; padding: .55rem; border: 1px solid rgba(170, 198, 248, .2); border-radius: 9px; background: rgba(10, 14, 24, .78); }
+
+.canon-leak-shell {
+  position: fixed;
+  inset: 0;
+  z-index: 95;
+  display: grid;
+  place-items: center;
+  background: rgba(4, 6, 12, .32);
+}
+.canon-leak-popup {
+  width: min(92vw, 560px);
+  border: 1px solid rgba(185, 213, 255, .38);
+  border-radius: 14px;
+  background: linear-gradient(145deg, rgba(17, 26, 41, .93), rgba(12, 18, 31, .92));
+  backdrop-filter: blur(12px);
+  color: #f1f7ff;
+  box-shadow: 0 30px 80px rgba(4, 10, 22, .72);
+  padding: 1rem 1.1rem;
+}
+.canon-leak-popup p { margin: 0 0 .7rem; font-size: clamp(1rem, 2.2vw, 1.15rem); line-height: 1.62; }
+.canon-leak-popup small { letter-spacing: .09em; text-transform: lowercase; opacity: .78; }
+
+.dossier-shell::before {
+  content: "";
+  position: absolute;
+  width: min(88vw, 760px);
+  height: min(72vh, 620px);
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(160, 198, 255, 0.2), rgba(5, 10, 18, 0));
+  filter: blur(10px);
+}
+.dossier-pane { line-height: 1.48; }
+
+@media (max-width: 700px) {
+  .nuve-dock-wrap { top: auto; bottom: 1rem; transform: none; }
+  .nuve-dock { writing-mode: horizontal-tb; transform: none; border-radius: 12px; padding: .45rem .6rem; }
+  .nuve-console { left: 0; top: auto; bottom: 3rem; transform: none; }
+}

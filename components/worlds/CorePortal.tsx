@@ -1,14 +1,19 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ERA_MATRIX, ERA_TIMELINE, getModulesForEra, type CanonModule, type EraKey } from "../../lib/eraMatrix";
 import { pulseDwell, trackCoreSession } from "../../lib/worldState";
 import { readPresence } from "../../lib/presence";
 import { useSystemState } from "../system/SystemProvider";
 import { OSModeToggle } from "../system/OSModeToggle";
+import { NuveDock } from "../NuveDock";
+import { CanonLeakPopup } from "../CanonLeakPopup";
+import { isPost2044Query, searchCanon, suggestCanonicalTerm } from "../../lib/canonIndex";
 
 const BOOT_KEY = "irreverso.coreBootSeen";
+const KERNEL_SEEN_KEY = "irreverso.kernelSeen";
 const SOUND_KEY = "irreverso.coreSoundEnabled";
 const NUVE_COOLDOWN_KEY = "irreverso.nuveDistortionSeen";
 
@@ -112,6 +117,7 @@ function DossierOverlay({ module, onClose }: { module: CanonModule | null; onClo
 }
 
 export function CorePortal() {
+  const router = useRouter();
   const { activeEra: era, setActiveEra: setEra } = useSystemState();
   const [bootDone, setBootDone] = useState(false);
   const [shortBoot, setShortBoot] = useState(false);
@@ -123,27 +129,31 @@ export function CorePortal() {
   const [eraTransition, setEraTransition] = useState(false);
   const [eraSummaryVisible, setEraSummaryVisible] = useState(false);
   const [debugClickSlug, setDebugClickSlug] = useState<string | null>(null);
+  const [searchTerm, setSearchTerm] = useState("");
   const summaryTimeoutRef = useRef<number | null>(null);
   const transitionTimeoutRef = useRef<number | null>(null);
   const debugTimeoutRef = useRef<number | null>(null);
   const audioRef = useRef<AudioRefs>({ ctx: null, ambience: null, ambienceGain: null });
+  const searchResults = useMemo(() => searchCanon(searchTerm), [searchTerm]);
+  const searchSuggestion = useMemo(() => suggestCanonicalTerm(searchTerm || "NUVE"), [searchTerm]);
 
   useEffect(() => {
     const audio = audioRef.current;
     trackCoreSession("/core");
     const dwell = window.setInterval(() => pulseDwell(), 1000);
 
-    const seenBoot = window.localStorage.getItem(BOOT_KEY) === "1";
+    const seenBoot = window.localStorage.getItem(BOOT_KEY) === "1" || window.sessionStorage.getItem(KERNEL_SEEN_KEY) === "1";
     setShortBoot(seenBoot);
     const timer = window.setTimeout(() => {
       setBootDone(true);
       window.localStorage.setItem(BOOT_KEY, "1");
+      window.sessionStorage.setItem(KERNEL_SEEN_KEY, "1");
     }, seenBoot ? 980 : 4400);
 
     setSoundEnabled(window.localStorage.getItem(SOUND_KEY) === "1");
 
     const onArchiveHotkey = (event: KeyboardEvent) => {
-      if (event.key.toLowerCase() === "a") window.location.assign("/archive");
+      if (event.key.toLowerCase() === "a") router.push("/archive");
     };
     window.addEventListener("keydown", onArchiveHotkey);
 
@@ -171,7 +181,7 @@ export function CorePortal() {
       if (audio.ambience) audio.ambience.stop();
       if (audio.ctx) audio.ctx.close();
     };
-  }, []);
+  }, [router]);
 
   const eraData = useMemo(() => ERA_MATRIX[era], [era]);
   const modules = useMemo(() => getModulesForEra(era), [era]);
@@ -343,9 +353,7 @@ export function CorePortal() {
       </div>
 
       <div className="core-ui-layer">
-        <Link className="oracle-link" href="/oracle">
-          oracle
-        </Link>
+        <NuveDock />
 
         <section className="core-hud">
         <p className="hud-title">IRREVERSO — Fragmentos da Realidade</p>
@@ -356,6 +364,21 @@ export function CorePortal() {
         <Link className="kernel-link" href="/archive">
           abrir archive matrix
         </Link>
+        <div className="core-search">
+          <input value={searchTerm} onChange={(event) => setSearchTerm(event.target.value)} placeholder="buscar camada canônica" />
+          {searchTerm.trim() ? (
+            <div className="core-search-results">
+              {searchResults.length ? searchResults.map((result) => (
+                <button type="button" key={result.id} onClick={() => result.year ? changeEra(result.year) : null}>
+                  <small>{result.type}</small>
+                  <strong>{result.title}</strong>
+                  <p>{result.snippet}</p>
+                  <span>Parte I / camada canônica</span>
+                </button>
+              )) : <p className="core-search-empty">Arquivo ainda não disponível nesta camada{isPost2044Query(searchTerm) ? " temporal" : ""}. Tente: {searchSuggestion}.</p>}
+            </div>
+          ) : null}
+        </div>
         <button
           className="sound-toggle"
           onClick={() => {
@@ -405,6 +428,7 @@ export function CorePortal() {
       </div>
 
       {nuvePulse ? <div className="nuve-glyph" /> : null}
+      <CanonLeakPopup />
       <DossierOverlay module={activeModule} onClose={() => setActiveModule(null)} />
     </main>
   );

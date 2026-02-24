@@ -506,7 +506,7 @@ export default function BootSequence({ durationMs, onFinish }: Props) {
             <div className="info mono"><span>deploying neural mesh…</span><span>{progress}%</span></div>
           </div>
 
-          <div className="hint mono">(não clique. não interrompa. a NUVE já decidiu.)</div>
+          <div className="hint mono">(não clique. NNNNNão interrompa. a NUVE já decidiu.)</div>
         </section>
       )}
     </main>

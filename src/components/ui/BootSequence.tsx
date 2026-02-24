@@ -7,6 +7,8 @@
 
 "use client";
 
+console.log("BOOTSEQUENCE BUILD MARKER :: 2026-02-24 :: I18N_V3");
+
 import { useEffect, useMemo, useRef, useState } from "react";
 
 type Props = {

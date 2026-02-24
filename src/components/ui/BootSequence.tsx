@@ -1,14 +1,9 @@
 // BootSequence.tsx — NUVE Cinematic Boot (Shader + Glitch + Neural Mesh) + i18n (pt/en/es-ready)
-// ✅ Vercel/Next strict TS fixes:
-//   - Never reference canvasRef.current directly inside nested funcs (alias `c`)
-//   - Never reference gl directly inside nested funcs (alias `g`)
-//   - Guard nullable WebGL returns: createShader/createProgram/createBuffer/getUniformLocation
-//   - Keep original classNames (bootRootV2, bootShader, deployPanelV2...) to preserve your visual
-//
-// ✅ i18n rules:
-//   - If lang prop is provided ("pt" | "en" | "es"), it wins
-//   - Else, detect from navigator.language (pt* => pt, es* => es, otherwise en)
-//   - Spanish is included. If you want only PT/EN for now, just avoid passing "es".
+// ✅ Vercel-safe TypeScript:
+//   - breachNote/resetNote states are plain string (not literal unions)
+//   - Never reference canvasRef.current inside nested funcs (alias `c`)
+//   - Never reference gl inside nested funcs (alias `g`)
+//   - Guard nullable WebGL calls
 
 "use client";
 
@@ -132,13 +127,16 @@ const DICT = {
 
 export default function BootSequence({ durationMs, onFinish, lang }: Props) {
   const resolvedLang = useMemo(() => lang ?? detectLang(), [lang]);
-  const T = DICT[resolvedLang];
+  const T = useMemo(() => DICT[resolvedLang], [resolvedLang]);
 
   const [phase, setPhase] = useState<Phase>("ORBIT");
   const [progress, setProgress] = useState(0);
   const [lines, setLines] = useState<string[]>([]);
-  const [breachNote, setBreachNote] = useState<string>(T.breach_note_1);
-  const [resetNote, setResetNote] = useState<string>(T.reset_note_1);
+
+  // ✅ IMPORTANT: always plain string to avoid literal-union SetState errors on Vercel
+  const [breachNote, setBreachNote] = useState<string>("");
+  const [resetNote, setResetNote] = useState<string>("");
+
   const [glitch, setGlitch] = useState(false);
   const doneRef = useRef(false);
 
@@ -146,11 +144,17 @@ export default function BootSequence({ durationMs, onFinish, lang }: Props) {
   const rafRef = useRef<number | null>(null);
   const startRef = useRef<number>(0);
 
+  // Initialize notes and keep them updated when language changes
   useEffect(() => {
     if (phase === "BREACH") setBreachNote(T.breach_note_1);
     if (phase === "RESET") setResetNote(T.reset_note_1);
+    if (phase === "ORBIT" || phase === "DEPLOY") {
+      // keep last notes, but ensure non-empty at least once
+      if (!breachNote) setBreachNote(T.breach_note_1);
+      if (!resetNote) setResetNote(T.reset_note_1);
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [resolvedLang]);
+  }, [T]);
 
   const seed = useMemo(() => {
     const s = (globalThis.crypto?.randomUUID?.() ?? String(Math.random()).slice(2));
@@ -183,7 +187,6 @@ export default function BootSequence({ durationMs, onFinish, lang }: Props) {
     ];
 
     const L = resolvedLang;
-
     const phrases = {
       pt: {
         bootstrap: "NUVE/BOOTSTRAP",
@@ -249,6 +252,7 @@ export default function BootSequence({ durationMs, onFinish, lang }: Props) {
     ];
   }, [seed, resolvedLang]);
 
+  // Phase flow
   useEffect(() => {
     const t1 = setTimeout(() => setPhase("BREACH"), orbitMs);
     const t2 = setTimeout(() => setPhase("RESET"), orbitMs + breachMs);
@@ -268,23 +272,24 @@ export default function BootSequence({ durationMs, onFinish, lang }: Props) {
     };
   }, [breachMs, resetMs, deployMs, onFinish]);
 
+  // “NUVE viva”: mensagens dinâmicas + glitch flags
   useEffect(() => {
     if (phase === "BREACH") {
       setBreachNote(T.breach_note_1);
 
       const a = setTimeout(() => {
         setGlitch(true);
-        setBreachNote(T.breach_note_2);
+        setBreachNote(String(T.breach_note_2));
       }, 850);
 
       const b = setTimeout(() => {
-        setBreachNote(T.breach_note_3);
+        setBreachNote(String(T.breach_note_3));
         setGlitch(false);
       }, 1650);
 
       const c = setTimeout(() => {
         setGlitch(true);
-        setBreachNote(T.breach_note_4);
+        setBreachNote(String(T.breach_note_4));
       }, 2500);
 
       const d = setTimeout(() => setGlitch(false), 3000);
@@ -301,8 +306,8 @@ export default function BootSequence({ durationMs, onFinish, lang }: Props) {
       setGlitch(false);
       setResetNote(T.reset_note_1);
 
-      const a = setTimeout(() => setResetNote(T.reset_note_2), 620);
-      const b = setTimeout(() => setResetNote(T.reset_note_3), 1380);
+      const a = setTimeout(() => setResetNote(String(T.reset_note_2)), 620);
+      const b = setTimeout(() => setResetNote(String(T.reset_note_3)), 1380);
 
       return () => {
         clearTimeout(a);
@@ -321,6 +326,7 @@ export default function BootSequence({ durationMs, onFinish, lang }: Props) {
     }
   }, [phase, T]);
 
+  // Progress bar
   useEffect(() => {
     const start = Date.now();
     const tick = window.setInterval(() => {
@@ -330,6 +336,7 @@ export default function BootSequence({ durationMs, onFinish, lang }: Props) {
     return () => window.clearInterval(tick);
   }, [durationMs]);
 
+  // Console feed
   useEffect(() => {
     if (phase !== "DEPLOY") return;
     setLines([]);

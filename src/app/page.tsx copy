@@ -1,0 +1,20 @@
+// ...
+useEffect(() => {
+  const now = Date.now();
+  const last = Number(localStorage.getItem(STORAGE_KEY) || "0");
+  const recent = last > 0 && now - last < DAYS_30_MS;
+
+  if (recent) {
+    localStorage.setItem(STORAGE_KEY, String(now));
+    router.replace("/temp_access"); // <-- era /core
+    return;
+  }
+
+  setShowBoot(true);
+}, [router]);
+
+const finish = () => {
+  localStorage.setItem(STORAGE_KEY, String(Date.now()));
+  router.replace("/temp_access"); // <-- era /core
+};
+// ...

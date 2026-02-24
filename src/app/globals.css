@@ -1,0 +1,504 @@
+/* globals.css — Boot (Shader + Glitch + Neural Mesh)
+   Objetivos:
+   - Tela toda preta (sem bordas brancas)
+   - Camada central maior, fonte legível
+   - Shader animado (canvas WebGL) + glitch overlay
+*/
+
+html, body, #__next {
+  height: 100%;
+}
+
+html, body {
+  margin: 0;
+  padding: 0;
+  background: #000;
+  overflow: hidden;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+.nuve-block-root {
+  position: relative;
+  min-height: 100vh;
+  background: #000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  color: rgba(255,255,255,0.92);
+}
+
+.nuve-background {
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(circle at 30% 40%, rgba(0,255,255,0.08), transparent 60%),
+    radial-gradient(circle at 70% 60%, rgba(150,0,255,0.08), transparent 60%),
+    #000;
+  animation: drift 12s infinite alternate ease-in-out;
+  z-index: 1;
+}
+
+@keyframes drift {
+  from { transform: scale(1) }
+  to { transform: scale(1.05) }
+}
+
+.nuve-card {
+  position: relative;
+  z-index: 2;
+  width: min(800px, 92vw);
+  padding: 40px;
+  border-radius: 24px;
+  background: rgba(0,0,0,0.5);
+  backdrop-filter: blur(14px);
+  border: 1px solid rgba(255,255,255,0.08);
+  box-shadow:
+    0 0 120px rgba(0,255,255,0.05),
+    0 0 160px rgba(150,0,255,0.05);
+  transition: all 0.2s ease;
+}
+
+.nuve-header {
+  font-size: 12px;
+  letter-spacing: 2px;
+  opacity: 0.6;
+  margin-bottom: 20px;
+}
+
+.nuve-title {
+  font-size: 28px;
+  font-weight: 600;
+  margin-bottom: 20px;
+}
+
+.nuve-text {
+  font-size: 16px;
+  opacity: 0.85;
+  margin-bottom: 14px;
+}
+
+.nuve-subtext {
+  font-size: 14px;
+  opacity: 0.6;
+}
+
+.nuve-divider {
+  height: 1px;
+  margin: 30px 0;
+  background: linear-gradient(to right, transparent, rgba(0,255,255,0.5), transparent);
+}
+
+.nuve-footer {
+  font-size: 12px;
+  opacity: 0.5;
+  line-height: 1.6;
+}
+
+.glitch {
+  transform: translateX(2px);
+  filter: hue-rotate(20deg);
+}
+
+.bootRootV2{
+  min-height:100vh;
+  display:grid;
+  place-items:center;
+  background:#000;
+  color: rgba(245,245,255,0.92);
+  overflow:hidden;
+  position:relative;
+}
+
+/* full-screen shader canvas */
+.bootShader{
+  position:absolute;
+  inset:0;
+  width:100%;
+  height:100%;
+  display:block;
+  opacity: 0.92;
+}
+
+/* glitch overlay (very subtle) */
+.bootGlitchOverlay{
+  position:absolute;
+  inset:0;
+  pointer-events:none;
+  opacity: 0;
+  mix-blend-mode: screen;
+  background:
+    repeating-linear-gradient(
+      to bottom,
+      rgba(255,255,255,0.05) 0px,
+      rgba(255,255,255,0.05) 1px,
+      rgba(0,0,0,0) 4px,
+      rgba(0,0,0,0) 10px
+    );
+  filter: blur(0.2px);
+}
+.bootRootV2.isGlitch .bootGlitchOverlay{
+  opacity: 0.18;
+  animation: glitchF 120ms steps(2) infinite;
+}
+@keyframes glitchF{
+  50%{ transform: translateX(-6px); opacity:0.12; }
+}
+
+/* shared */
+.mono{
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono";
+}
+.mono.weak{ opacity:0.62; }
+.mono.faint{ opacity:0.45; }
+.dangerText{ color: rgba(255,160,210,0.92); }
+
+.tag{
+  font-size:12px;
+  letter-spacing:0.18em;
+  padding:6px 10px;
+  border-radius:999px;
+  border: 1px solid rgba(245,245,255,0.10);
+  background: rgba(0,0,0,0.25);
+  opacity:0.82;
+}
+.tag.danger{
+  border-color: rgba(255,120,180,0.35);
+  color: rgba(255,160,210,0.92);
+}
+
+/* ORBIT */
+.orbitPanelV2{
+  width:min(980px, calc(100vw - 28px));
+  padding: 22px 22px 20px;
+  border-radius: 22px;
+  background: rgba(0,0,0,0.35);
+  backdrop-filter: blur(14px);
+  box-shadow:
+    0 0 120px rgba(120,255,255,0.06),
+    0 0 180px rgba(150,80,255,0.06);
+}
+.orbitHeadV2{ display:flex; justify-content:space-between; align-items:center; }
+.orbitTitleV2{ letter-spacing:0.22em; font-size:12px; opacity:0.82; }
+.orbitMetaV2{ font-size:12px; opacity:0.58; letter-spacing:0.06em; }
+.orbitBodyV2{
+  margin-top: 14px;
+  display:flex;
+  gap:18px;
+  align-items:center;
+  border-radius: 18px;
+  background: rgba(0,0,0,0.25);
+  padding: 18px;
+}
+.orbitGlyphV2{
+  width: 170px;
+  height: 170px;
+  border-radius: 999px;
+  border: 1px solid rgba(245,245,255,0.10);
+  background:
+    radial-gradient(circle at 35% 40%, rgba(120,255,255,0.22), rgba(0,0,0,0)),
+    radial-gradient(circle at 65% 60%, rgba(150,80,255,0.18), rgba(0,0,0,0));
+  box-shadow: 0 0 70px rgba(120,255,255,0.08);
+  position:relative;
+  animation: orbSpin 2.7s linear infinite;
+}
+.orbitGlyphV2::after{
+  content:"";
+  position:absolute; inset: 18px;
+  border-radius: 999px;
+  border: 1px dashed rgba(245,245,255,0.14);
+  opacity: 0.7;
+}
+@keyframes orbSpin{ to{ transform: rotate(360deg); } }
+.orbitTextV2{ display:flex; flex-direction:column; gap:8px; }
+
+/* BREACH */
+.breachPanelV2{
+  width:min(980px, calc(100vw - 28px));
+  padding: 22px 22px 20px;
+  border-radius: 22px;
+  background: rgba(0,0,0,0.38);
+  backdrop-filter: blur(14px);
+  box-shadow: 0 0 160px rgba(255,120,180,0.08);
+  animation: breachFlicker 0.22s steps(2) infinite;
+}
+@keyframes breachFlicker{ 50%{ opacity:0.86; } }
+.breachHeaderV2{ display:flex; gap:10px; align-items:center; }
+.breachTitleV2{ margin-top:14px; font-size: 22px; letter-spacing:0.01em; }
+.breachMsgV2{ margin-top: 10px; opacity:0.76; line-height:1.55; font-size: 15px; }
+.breachListV2{ margin-top:12px; font-size: 13px; letter-spacing:0.06em; opacity:0.78; display:flex; flex-direction:column; gap:6px; }
+.breachPulseV2{ margin-top: 14px; letter-spacing:0.18em; opacity:0.55; animation: pulseWarn 0.9s ease-in-out infinite; }
+@keyframes pulseWarn{ 50%{ opacity:0.25; transform: translateY(-1px);} }
+
+/* RESET */
+.resetPanelV2{
+  width:min(980px, calc(100vw - 28px));
+  padding: 22px 22px 20px;
+  border-radius: 22px;
+  background: rgba(0,0,0,0.35);
+  backdrop-filter: blur(14px);
+  box-shadow:
+    0 0 120px rgba(120,255,255,0.06),
+    0 0 180px rgba(150,80,255,0.06);
+}
+.resetTitleV2{ letter-spacing:0.18em; font-size: 12px; opacity:0.82; }
+.resetSubV2{ margin-top:10px; opacity:0.72; letter-spacing:0.06em; font-size: 14px; }
+.resetStackV2{
+  margin-top:16px;
+  border-radius:16px;
+  background: rgba(0,0,0,0.25);
+  padding:14px;
+  font-size: 13px;
+  letter-spacing:0.06em;
+  opacity:0.82;
+  display:flex;
+  flex-direction:column;
+  gap:8px;
+}
+.resetSpinnerV2{
+  margin-top:16px;
+  width: 26px;
+  height: 26px;
+  border-radius:999px;
+  border: 2px solid rgba(245,245,255,0.12);
+  border-top-color: rgba(120,255,255,0.65);
+  animation: spin 0.8s linear infinite;
+}
+@keyframes spin{ to{ transform: rotate(360deg);} }
+
+/* DEPLOY (bigger console, readable) */
+.deployPanelV2{
+  width:min(1100px, calc(100vw - 28px));
+  padding: 22px 22px 18px;
+  border-radius: 22px;
+  background: rgba(0,0,0,0.38);
+  backdrop-filter: blur(14px);
+  box-shadow:
+    0 0 140px rgba(120,255,255,0.06),
+    0 0 190px rgba(150,80,255,0.06);
+}
+.deployTopV2{ display:flex; justify-content:space-between; align-items:center; padding:2px 2px 10px; }
+.deployTitleV2{ letter-spacing:0.22em; font-size:12px; opacity:0.82; }
+.deployMetaV2{ font-size:12px; opacity:0.58; letter-spacing:0.06em; }
+
+.deployConsoleV2{
+  border-radius: 18px;
+  background: rgba(0,0,0,0.30);
+  padding: 16px 16px;
+  min-height: 340px;
+  max-height: 46vh;
+  overflow:hidden;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono";
+  font-size: 14px;          /* bigger */
+  line-height: 1.65;        /* more readable */
+  color: rgba(245,245,255,0.88);
+  text-shadow: 0 0 26px rgba(120,255,255,0.06);
+  position: relative;
+}
+@media (max-width: 520px){
+  .deployConsoleV2{ font-size: 13px; min-height: 300px; }
+}
+
+.deployLineV2{ opacity:0.92; }
+.prompt{ color: rgba(120,255,255,0.75); }
+
+.cursor{
+  height: 16px;
+  margin-top: 8px;
+  width: 12px;
+  background: rgba(120,255,255,0.65);
+  box-shadow: 0 0 18px rgba(120,255,255,0.18);
+  animation: blink 0.9s steps(2) infinite;
+}
+@keyframes blink{ 50%{ opacity:0; } }
+
+.deployFooterV2{ margin-top:12px; }
+.bar{
+  height: 10px;
+  border-radius: 999px;
+  background: rgba(245,245,255,0.08);
+  overflow:hidden;
+}
+.fill{
+  height:100%;
+  background: linear-gradient(90deg, rgba(120,255,255,0.55), rgba(150,80,255,0.45));
+  box-shadow: 0 0 22px rgba(120,255,255,0.16);
+  transition: width 80ms linear;
+}
+.info{
+  margin-top:8px;
+  display:flex;
+  justify-content:space-between;
+  font-size:12px;
+  opacity:0.68;
+  letter-spacing:0.06em;
+}
+.hint{
+  margin-top:10px;
+  font-size:12px;
+  opacity:0.48;
+  letter-spacing:0.08em;
+}
+
+.nuve-block-root {
+  position: relative;
+  min-height: 100vh;
+  background: #000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  color: rgba(255,255,255,0.92);
+}
+
+.nuve-background {
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(circle at 30% 40%, rgba(0,255,255,0.08), transparent 60%),
+    radial-gradient(circle at 70% 60%, rgba(150,0,255,0.08), transparent 60%),
+    #000;
+  animation: drift 12s infinite alternate ease-in-out;
+  z-index: 1;
+}
+
+@keyframes drift {
+  from { transform: scale(1) }
+  to { transform: scale(1.05) }
+}
+
+.nuve-card {
+  position: relative;
+  z-index: 2;
+  width: min(880px, 92vw);
+  padding: 44px;
+  border-radius: 24px;
+  background: rgba(0,0,0,0.55);
+  backdrop-filter: blur(14px);
+  border: 1px solid rgba(255,255,255,0.08);
+  box-shadow:
+    0 0 120px rgba(0,255,255,0.05),
+    0 0 160px rgba(150,0,255,0.05);
+  transition: all 0.2s ease;
+}
+
+.nuve-header {
+  font-size: 12px;
+  letter-spacing: 2px;
+  opacity: 0.6;
+  margin-bottom: 22px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono";
+}
+
+.nuve-title {
+  font-size: 30px;
+  font-weight: 600;
+  margin-bottom: 18px;
+}
+
+.nuve-text {
+  font-size: 16px;
+  opacity: 0.86;
+  margin-bottom: 14px;
+}
+
+.nuve-subtext {
+  font-size: 14px;
+  opacity: 0.62;
+  line-height: 1.6;
+}
+
+.nuve-divider {
+  height: 1px;
+  margin: 30px 0;
+  background: linear-gradient(to right, transparent, rgba(0,255,255,0.5), transparent);
+}
+
+.nuve-footer {
+  font-size: 12px;
+  opacity: 0.5;
+  line-height: 1.7;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono";
+}
+
+.glitch {
+  transform: translateX(2px);
+  filter: hue-rotate(18deg);
+}
+
+.nuve-root {
+  position: relative;
+  min-height: 100vh;
+  background: #000;
+  color: rgba(255,255,255,0.9);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+.neural-bg {
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(circle at 30% 40%, rgba(0,255,255,0.1), transparent 60%),
+    radial-gradient(circle at 70% 60%, rgba(140,0,255,0.1), transparent 60%),
+    #000;
+  animation: pulse 8s infinite alternate ease-in-out;
+}
+
+@keyframes pulse {
+  from { transform: scale(1); opacity: 0.8; }
+  to { transform: scale(1.05); opacity: 1; }
+}
+
+.nuve-panel {
+  position: relative;
+  z-index: 2;
+  width: min(880px, 92vw);
+  padding: 50px;
+  border-radius: 20px;
+  background: rgba(0,0,0,0.55);
+  backdrop-filter: blur(20px);
+  border: 1px solid rgba(255,255,255,0.08);
+  box-shadow:
+    0 0 120px rgba(0,255,255,0.05),
+    0 0 180px rgba(140,0,255,0.05);
+}
+
+.nuve-header {
+  font-size: 12px;
+  letter-spacing: 2px;
+  opacity: 0.6;
+  margin-bottom: 25px;
+}
+
+.nuve-log p {
+  margin: 4px 0;
+  opacity: 0.85;
+}
+
+.nuve-shift {
+  margin-top: 25px;
+  padding-top: 20px;
+  border-top: 1px solid rgba(0,255,255,0.4);
+  font-size: 14px;
+  opacity: 0.75;
+}
+
+.nuve-message {
+  margin-top: 35px;
+  font-size: 16px;
+  line-height: 1.6;
+  color: rgba(255,255,255,0.95);
+  animation: fadeIn 2s ease forwards;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}

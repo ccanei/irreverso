@@ -1,4 +1,10 @@
 // BootSequence.tsx — NUVE Cinematic Boot (Shader + Glitch + Neural Mesh)
+// ✅ Vercel/Next strict TS fixes:
+//   - Never reference canvasRef.current directly inside nested funcs (alias `c`)
+//   - Never reference gl directly inside nested funcs (alias `g`)
+//   - Guard nullable WebGL returns: createShader/createProgram/createBuffer/getUniformLocation
+//   - Keep original classNames (bootRootV2, bootShader, deployPanelV2...) to preserve your visual
+
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -24,12 +30,10 @@ export default function BootSequence({ durationMs, onFinish }: Props) {
 
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const rafRef = useRef<number | null>(null);
-  const glRef = useRef<WebGLRenderingContext | null>(null);
-  const progRef = useRef<WebGLProgram | null>(null);
   const startRef = useRef<number>(0);
 
   const seed = useMemo(() => {
-    const s = crypto?.randomUUID?.() ?? String(Math.random()).slice(2);
+    const s = (globalThis.crypto?.randomUUID?.() ?? String(Math.random()).slice(2));
     return s.slice(0, 8).toUpperCase();
   }, []);
 
@@ -166,7 +170,6 @@ export default function BootSequence({ durationMs, onFinish }: Props) {
     }
 
     if (phase === "DEPLOY") {
-      // micro-glitches aleatórios, rápidos e leves
       const i = setInterval(() => {
         if (Math.random() > 0.78) {
           setGlitch(true);
@@ -177,7 +180,7 @@ export default function BootSequence({ durationMs, onFinish }: Props) {
     }
   }, [phase]);
 
-  // Progress bar across total time (looks like system time)
+  // Progress bar
   useEffect(() => {
     const start = Date.now();
     const tick = window.setInterval(() => {
@@ -188,7 +191,7 @@ export default function BootSequence({ durationMs, onFinish }: Props) {
     return () => window.clearInterval(tick);
   }, [durationMs]);
 
-  // Console feed: spread through entire DEPLOY time (not half)
+  // Console feed
   useEffect(() => {
     if (phase !== "DEPLOY") return;
     setLines([]);
@@ -204,33 +207,25 @@ export default function BootSequence({ durationMs, onFinish }: Props) {
           if (i < script.length) next.push(script[i++]);
         }
         return next.slice(-20);
-      });ƒ
+      });
 
-      if (i >= script.length) {
-        window.clearInterval(feed);
-      }
+      if (i >= script.length) window.clearInterval(feed);
     }, interval);
 
     return () => window.clearInterval(feed);
   }, [phase, deployMs, script]);
 
-  // WebGL "shader" background with neural mesh and glitch
+  // WebGL shader background
   useEffect(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const c = canvas; // alias NÃO nulo para TS
-    
-    const gl = canvas.getContext("webgl", {
-      antialias: false,
-      alpha: true,
-      preserveDrawingBuffer: false,
-    });
+    const canvasEl = canvasRef.current;
+    if (!canvasEl) return;
+
+    const gl = canvasEl.getContext("webgl", { antialias: false, alpha: true, preserveDrawingBuffer: false });
     if (!gl) return;
 
-    // ✅ TS/Vercel strict fix: keep a non-null alias for nested functions
+    // ✅ aliases never-null for strict TS
+    const c = canvasEl;
     const g = gl;
-
-    glRef.current = g;
 
     const vert = `
       attribute vec2 a_pos;
@@ -246,10 +241,9 @@ export default function BootSequence({ durationMs, onFinish }: Props) {
       varying vec2 v_uv;
       uniform vec2 u_res;
       uniform float u_time;
-      uniform float u_phase;   // 0 orbit, 1 breach, 2 reset, 3 deploy
-      uniform float u_glitch;  // 0/1
+      uniform float u_phase;
+      uniform float u_glitch;
 
-      // hash
       float h21(vec2 p){
         p = fract(p*vec2(123.34, 456.21));
         p += dot(p, p+45.32);
@@ -261,13 +255,12 @@ export default function BootSequence({ durationMs, onFinish }: Props) {
         vec2 f = fract(p);
         float a = h21(i);
         float b = h21(i+vec2(1,0));
-        float c = h21(i+vec2(0,1));
+        float c2 = h21(i+vec2(0,1));
         float d = h21(i+vec2(1,1));
         vec2 u = f*f*(3.0-2.0*f);
-        return mix(a,b,u.x) + (c-a)*u.y*(1.0-u.x) + (d-b)*u.x*u.y;
+        return mix(a,b,u.x) + (c2-a)*u.y*(1.0-u.x) + (d-b)*u.x*u.y;
       }
 
-      // fbm
       float fbm(vec2 p){
         float v = 0.0;
         float a = 0.55;
@@ -279,7 +272,6 @@ export default function BootSequence({ durationMs, onFinish }: Props) {
         return v;
       }
 
-      // line distance for grid / neural links
       float lineDist(vec2 p, float w){
         p = abs(fract(p)-0.5);
         float d = min(p.x, p.y);
@@ -291,21 +283,16 @@ export default function BootSequence({ durationMs, onFinish }: Props) {
         vec2 p = (uv*2.0-1.0);
         p.x *= u_res.x/u_res.y;
 
-        // cinematic dark base
         float t = u_time;
 
-        // subtle nebula
         float n = fbm(p*1.25 + vec2(0.0, t*0.03));
         float neb = smoothstep(0.25, 0.95, n);
 
-        // neural mesh intensity increases in DEPLOY
-        float deployK = smoothstep(2.4, 3.0, u_phase); // ~0 until deploy
-        float orbitK  = 1.0 - smoothstep(0.8, 1.2, u_phase); // orbit is phase 0
+        float deployK = smoothstep(2.4, 3.0, u_phase);
 
         vec2 gp = p*3.4 + vec2(t*0.06, -t*0.04);
         float grid = lineDist(gp, 0.05) * 0.35;
 
-        // "synapses": random points with connection glow
         vec2 sp = p*1.8 + vec2(t*0.05, t*0.02);
         float pts = 0.0;
         for(int i=0;i<10;i++){
@@ -313,12 +300,11 @@ export default function BootSequence({ durationMs, onFinish }: Props) {
           vec2 id = floor(q);
           vec2 f = fract(q)-0.5;
           float r = h21(id);
-          vec2 c = vec2(fract(r*13.7)-0.5, fract(r*7.9)-0.5);
-          float d = length(f - c);
-          pts += smoothstep(0.12, 0.0, d) * 0.12;
+          vec2 c3 = vec2(fract(r*13.7)-0.5, fract(r*7.9)-0.5);
+          float d2 = length(f - c3);
+          pts += smoothstep(0.12, 0.0, d2) * 0.12;
         }
 
-        // glitch: horizontal slice shift + chroma split style
         float gg = u_glitch;
         float slice = step(0.82, noise(vec2(t*3.0, uv.y*18.0))) * gg;
         float xshift = slice * (noise(vec2(uv.y*40.0, t*6.0)) - 0.5) * 0.12;
@@ -330,7 +316,6 @@ export default function BootSequence({ durationMs, onFinish }: Props) {
         float n2 = fbm(p2*1.25 + vec2(0.0, t*0.03));
         float neb2 = smoothstep(0.25, 0.95, n2);
 
-        // color palette (tech + book): cyan + violet + subtle magenta
         vec3 base = vec3(0.02, 0.015, 0.04);
         vec3 cyan = vec3(0.28, 0.98, 0.95);
         vec3 vio  = vec3(0.64, 0.28, 0.95);
@@ -339,7 +324,6 @@ export default function BootSequence({ durationMs, onFinish }: Props) {
         float glow = neb2*0.22 + neb*0.10;
         float mesh = (grid + pts) * (0.18 + deployK*1.2);
 
-        // orbit has more soft nebula, deploy has more mesh
         vec3 col = base;
         col += cyan * (glow*0.35);
         col += vio  * (glow*0.22);
@@ -348,15 +332,12 @@ export default function BootSequence({ durationMs, onFinish }: Props) {
         col += cyan * (mesh*0.55);
         col += vio  * (mesh*0.30);
 
-        // breach: pink-ish warning wash + stronger flicker
         float breachK = smoothstep(0.9, 1.0, u_phase) * (1.0 - smoothstep(1.8, 2.0, u_phase));
         col += mag * breachK * (0.28 + 0.10*sin(t*30.0));
 
-        // vignette
         float v = smoothstep(1.4, 0.2, length(p2));
         col *= v;
 
-        // subtle scanlines
         float scan = 0.06 * sin((uv.y*u_res.y)*0.035 + t*10.0);
         col -= scan;
 
@@ -364,16 +345,12 @@ export default function BootSequence({ durationMs, onFinish }: Props) {
       }
     `;
 
-    // ✅ TS/Vercel strict fix: createShader can be null
     function compile(type: number, src: string) {
       const sh = g.createShader(type);
       if (!sh) return null;
-
       g.shaderSource(sh, src);
       g.compileShader(sh);
-
       if (!g.getShaderParameter(sh, g.COMPILE_STATUS)) {
-        // fail silently (fallback to CSS bg)
         g.deleteShader(sh);
         return null;
       }
@@ -384,7 +361,6 @@ export default function BootSequence({ durationMs, onFinish }: Props) {
     const fs = compile(g.FRAGMENT_SHADER, frag);
     if (!vs || !fs) return;
 
-    // ✅ TS/Vercel strict fix: createProgram can be null
     const prog = g.createProgram();
     if (!prog) return;
 
@@ -393,18 +369,11 @@ export default function BootSequence({ durationMs, onFinish }: Props) {
     g.linkProgram(prog);
     if (!g.getProgramParameter(prog, g.LINK_STATUS)) return;
 
-    progRef.current = prog;
-
-    // ✅ TS/Vercel strict fix: createBuffer can be null
     const buf = g.createBuffer();
     if (!buf) return;
 
     g.bindBuffer(g.ARRAY_BUFFER, buf);
-    g.bufferData(
-      g.ARRAY_BUFFER,
-      new Float32Array([-1, -1, 1, -1, -1, 1, -1, 1, 1, -1, 1, 1]),
-      g.STATIC_DRAW
-    );
+    g.bufferData(g.ARRAY_BUFFER, new Float32Array([-1,-1, 1,-1, -1,1, -1,1, 1,-1, 1,1]), g.STATIC_DRAW);
 
     const locPos = g.getAttribLocation(prog, "a_pos");
     g.enableVertexAttribArray(locPos);
@@ -416,20 +385,20 @@ export default function BootSequence({ durationMs, onFinish }: Props) {
     const uGlitch = g.getUniformLocation(prog, "u_glitch");
 
     function resize() {
-  const dpr = Math.min(2, window.devicePixelRatio || 1);
+      const dpr = Math.min(2, window.devicePixelRatio || 1);
+      const w = Math.floor(c.clientWidth * dpr);
+      const h = Math.floor(c.clientHeight * dpr);
 
-  const w = Math.floor(c.clientWidth * dpr);
-  const h = Math.floor(c.clientHeight * dpr);
+      if (c.width !== w || c.height !== h) {
+        c.width = w;
+        c.height = h;
+        g.viewport(0, 0, w, h);
+      }
 
-  if (c.width !== w || c.height !== h) {
-    c.width = w;
-    c.height = h;
-    g.viewport(0, 0, w, h);
-  }
+      g.useProgram(prog);
+      if (uRes) g.uniform2f(uRes, c.width, c.height);
+    }
 
-  g.useProgram(prog);
-  if (uRes) g.uniform2f(uRes, c.width, c.height);
-}
     const onResize = () => resize();
     window.addEventListener("resize", onResize);
 
@@ -443,7 +412,6 @@ export default function BootSequence({ durationMs, onFinish }: Props) {
       g.useProgram(prog);
       if (uTime) g.uniform1f(uTime, t);
 
-      // phase numeric mapping: orbit=0, breach=1, reset=2, deploy=3
       const ph = phase === "ORBIT" ? 0 : phase === "BREACH" ? 1 : phase === "RESET" ? 2 : 3;
       if (uPhase) g.uniform1f(uPhase, ph);
       if (uGlitch) g.uniform1f(uGlitch, glitch ? 1 : 0);
@@ -457,18 +425,13 @@ export default function BootSequence({ durationMs, onFinish }: Props) {
     return () => {
       window.removeEventListener("resize", onResize);
       if (rafRef.current) cancelAnimationFrame(rafRef.current);
-      try {
-        g.deleteProgram(prog);
-      } catch {}
+      try { g.deleteProgram(prog); } catch {}
     };
   }, [phase, glitch]);
 
-  // UI overlay (center panel)
   return (
     <main className={`bootRootV2 ${glitch ? "isGlitch" : ""}`}>
       <canvas ref={canvasRef} className="bootShader" aria-hidden="true" />
-
-      {/* glitch overlay */}
       <div className="bootGlitchOverlay" aria-hidden="true" />
 
       {phase === "ORBIT" && (
@@ -483,9 +446,7 @@ export default function BootSequence({ durationMs, onFinish }: Props) {
               <div className="mono">scanning temporal index</div>
               <div className="mono weak">aligning epochs • 1983 → 2107</div>
               <div className="mono weak">do not interact</div>
-              <div className="mono faint" style={{ marginTop: 10 }}>
-                seed:{seed}
-              </div>
+              <div className="mono faint" style={{ marginTop: 10 }}>seed:{seed}</div>
             </div>
           </div>
         </section>
@@ -506,9 +467,7 @@ export default function BootSequence({ durationMs, onFinish }: Props) {
             <div>• status: violação de janela cronológica</div>
             <div>• {breachNote}</div>
           </div>
-          <div className="breachPulseV2 mono" aria-hidden="true">
-            NUVE IS OBSERVING
-          </div>
+          <div className="breachPulseV2 mono" aria-hidden="true">NUVE IS OBSERVING</div>
         </section>
       )}
 
@@ -543,13 +502,8 @@ export default function BootSequence({ durationMs, onFinish }: Props) {
           </div>
 
           <div className="deployFooterV2">
-            <div className="bar">
-              <div className="fill" style={{ width: `${progress}%` }} />
-            </div>
-            <div className="info mono">
-              <span>deploying neural mesh…</span>
-              <span>{progress}%</span>
-            </div>
+            <div className="bar"><div className="fill" style={{ width: `${progress}%` }} /></div>
+            <div className="info mono"><span>deploying neural mesh…</span><span>{progress}%</span></div>
           </div>
 
           <div className="hint mono">(não clique. não interrompa. a NUVE já decidiu.)</div>

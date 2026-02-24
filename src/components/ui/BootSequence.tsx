@@ -1,18 +1,20 @@
-// BootSequence.tsx — NUVE Cinematic Boot (Shader + Glitch + Neural Mesh) + i18n (pt/en/es-ready)
+// BootSequence.tsx — NUVE Cinematic Boot (Shader + Glitch + Neural Mesh) + i18n (PT/EN only)
 // ✅ Vercel-safe TypeScript:
-//   - breachNote/resetNote states are plain string (not literal unions)
-//   - Never reference canvasRef.current inside nested funcs (alias `c`)
-//   - Never reference gl inside nested funcs (alias `g`)
+//   - breachNote/resetNote are plain string
+//   - Avoid canvasRef.current inside nested funcs (alias `c`)
+//   - Avoid gl inside nested funcs (alias `g`)
 //   - Guard nullable WebGL calls
 
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
 
+type Lang = "pt" | "en";
+
 type Props = {
   durationMs: number;
   onFinish: () => void;
-  lang?: "pt" | "en" | "es";
+  lang?: Lang;
 };
 
 type Phase = "ORBIT" | "BREACH" | "RESET" | "DEPLOY";
@@ -24,12 +26,9 @@ function pick<T>(arr: T[]) {
   return arr[Math.floor(Math.random() * arr.length)];
 }
 
-function detectLang(): "pt" | "en" | "es" {
+function detectLang(): Lang {
   if (typeof navigator === "undefined") return "en";
-  const raw = (navigator.language || "en").toLowerCase();
-  if (raw.startsWith("pt")) return "pt";
-  if (raw.startsWith("es")) return "es";
-  return "en";
+  return navigator.language.toLowerCase().startsWith("pt") ? "pt" : "en";
 }
 
 const DICT = {
@@ -62,6 +61,14 @@ const DICT = {
     reset_note_1: "limpando buffers • revertendo estado • restaurando superfície",
     reset_note_2: "reconfigurando instância • autorização aplicada retroativamente",
     reset_note_3: "handshake interno • estabilidade restaurada • preparando deploy",
+    phrases: {
+      bootstrap: "NUVE/BOOTSTRAP",
+      fabric: "fabric: estabelecendo malha segura…",
+      tls: "tls: sessão negociada (forward-secrecy=on)",
+      deploy: "deploy: ativando malha neural…",
+      render: "render: preparando superfície core -> /core",
+      success: "DEPLOY SUCCESS :: IRREVERSO_OS READY",
+    },
   },
   en: {
     orbit_meta: "NUVE • presence forming",
@@ -92,48 +99,26 @@ const DICT = {
     reset_note_1: "clearing buffers • reverting state • restoring surface",
     reset_note_2: "reconfiguring instance • retroactive authorization applied",
     reset_note_3: "internal handshake • stability restored • preparing deploy",
-  },
-  es: {
-    orbit_meta: "NUVE • presencia en formación",
-    orbit_scanning: "escaneando índice temporal",
-    orbit_align: "alineando épocas • 1983 → 2107",
-    orbit_no: "no interactúes",
-    breach_access: "ACCESO",
-    breach_unauth: "NO AUTORIZADO",
-    breach_title: "Contenido bloqueado por integridad temporal.",
-    breach_msg_a: "Estos registros pertenecen a eventos que",
-    breach_msg_b: "aún no han ocurrido",
-    breach_msg_c: "en esta época.",
-    breach_try: "• intento: lectura de archivos futuros",
-    breach_status: "• estado: violación de ventana temporal",
-    breach_observing: "NUVE ESTÁ OBSERVANDO",
-    reset_title: "RECONFIGURANDO INSTANCIA",
-    reset_kill: "kill-switch: soft",
-    reset_cache: "cache: purge",
-    reset_index: "index: resync",
-    reset_handoff: "handoff: pending",
-    deploy_meta: "Registro Autorizado • NUVE ONLINE",
-    deploy_footer_left: "desplegando malla neural…",
-    deploy_hint: "(no hagas clic. no interrumpas. la NUVE ya decidió.)",
-    breach_note_1: "acceso denegado • ventana temporal inválida",
-    breach_note_2: "anomalía detectada: credencial retroactiva (no debería existir)",
-    breach_note_3: "NUVE: reescribiendo autorización en modo silencioso…",
-    breach_note_4: "integridad preservada • reinicio requerido",
-    reset_note_1: "limpiando buffers • revirtiendo estado • restaurando superficie",
-    reset_note_2: "reconfigurando instancia • autorización retroactiva aplicada",
-    reset_note_3: "handshake interno • estabilidad restaurada • preparando despliegue",
+    phrases: {
+      bootstrap: "NUVE/BOOTSTRAP",
+      fabric: "fabric: establishing secure mesh…",
+      tls: "tls: session negotiated (forward-secrecy=on)",
+      deploy: "deploy: activating neural mesh…",
+      render: "render: preparing core surface -> /core",
+      success: "DEPLOY SUCCESS :: IRREVERSO_OS READY",
+    },
   },
 } as const;
 
 export default function BootSequence({ durationMs, onFinish, lang }: Props) {
-  const resolvedLang = useMemo(() => lang ?? detectLang(), [lang]);
+  const resolvedLang = useMemo<Lang>(() => lang ?? detectLang(), [lang]);
   const T = useMemo(() => DICT[resolvedLang], [resolvedLang]);
 
   const [phase, setPhase] = useState<Phase>("ORBIT");
   const [progress, setProgress] = useState(0);
   const [lines, setLines] = useState<string[]>([]);
 
-  // ✅ IMPORTANT: always plain string to avoid literal-union SetState errors on Vercel
+  // ✅ Vercel-safe: always plain string
   const [breachNote, setBreachNote] = useState<string>("");
   const [resetNote, setResetNote] = useState<string>("");
 
@@ -149,7 +134,6 @@ export default function BootSequence({ durationMs, onFinish, lang }: Props) {
     if (phase === "BREACH") setBreachNote(T.breach_note_1);
     if (phase === "RESET") setResetNote(T.reset_note_1);
     if (phase === "ORBIT" || phase === "DEPLOY") {
-      // keep last notes, but ensure non-empty at least once
       if (!breachNote) setBreachNote(T.breach_note_1);
       if (!resetNote) setResetNote(T.reset_note_1);
     }
@@ -157,7 +141,7 @@ export default function BootSequence({ durationMs, onFinish, lang }: Props) {
   }, [T]);
 
   const seed = useMemo(() => {
-    const s = (globalThis.crypto?.randomUUID?.() ?? String(Math.random()).slice(2));
+    const s = globalThis.crypto?.randomUUID?.() ?? String(Math.random()).slice(2);
     return s.slice(0, 8).toUpperCase();
   }, []);
 
@@ -186,33 +170,7 @@ export default function BootSequence({ durationMs, onFinish, lang }: Props) {
       `NUVE_RELAY_${region}_${zone}`.replace("-", "_"),
     ];
 
-    const L = resolvedLang;
-    const phrases = {
-      pt: {
-        bootstrap: "NUVE/BOOTSTRAP",
-        fabric: "fabric: estabelecendo malha segura…",
-        tls: "tls: sessão negociada (forward-secrecy=on)",
-        deploy: "deploy: ativando malha neural…",
-        render: "render: preparando superfície core -> /core",
-        success: "DEPLOY SUCCESS :: IRREVERSO_OS READY",
-      },
-      en: {
-        bootstrap: "NUVE/BOOTSTRAP",
-        fabric: "fabric: establishing secure mesh…",
-        tls: "tls: session negotiated (forward-secrecy=on)",
-        deploy: "deploy: activating neural mesh…",
-        render: "render: preparing core surface -> /core",
-        success: "DEPLOY SUCCESS :: IRREVERSO_OS READY",
-      },
-      es: {
-        bootstrap: "NUVE/BOOTSTRAP",
-        fabric: "fabric: estableciendo malla segura…",
-        tls: "tls: sesión negociada (forward-secrecy=on)",
-        deploy: "deploy: activando malla neural…",
-        render: "render: preparando superficie core -> /core",
-        success: "DEPLOY SUCCESS :: IRREVERSO_OS READY",
-      },
-    }[L];
+    const phrases = T.phrases;
 
     return [
       `${phrases.bootstrap} :: instance=NUVE_CORE_0110 :: seed=${seed}`,
@@ -250,7 +208,7 @@ export default function BootSequence({ durationMs, onFinish, lang }: Props) {
       `…`,
       phrases.success,
     ];
-  }, [seed, resolvedLang]);
+  }, [seed, T]);
 
   // Phase flow
   useEffect(() => {
@@ -364,7 +322,11 @@ export default function BootSequence({ durationMs, onFinish, lang }: Props) {
     const canvasEl = canvasRef.current;
     if (!canvasEl) return;
 
-    const gl = canvasEl.getContext("webgl", { antialias: false, alpha: true, preserveDrawingBuffer: false });
+    const gl = canvasEl.getContext("webgl", {
+      antialias: false,
+      alpha: true,
+      preserveDrawingBuffer: false,
+    });
     if (!gl) return;
 
     const c = canvasEl;
@@ -516,7 +478,11 @@ export default function BootSequence({ durationMs, onFinish, lang }: Props) {
     if (!buf) return;
 
     g.bindBuffer(g.ARRAY_BUFFER, buf);
-    g.bufferData(g.ARRAY_BUFFER, new Float32Array([-1,-1, 1,-1, -1,1, -1,1, 1,-1, 1,1]), g.STATIC_DRAW);
+    g.bufferData(
+      g.ARRAY_BUFFER,
+      new Float32Array([-1, -1, 1, -1, -1, 1, -1, 1, 1, -1, 1, 1]),
+      g.STATIC_DRAW
+    );
 
     const locPos = g.getAttribLocation(prog, "a_pos");
     g.enableVertexAttribArray(locPos);
@@ -568,7 +534,9 @@ export default function BootSequence({ durationMs, onFinish, lang }: Props) {
     return () => {
       window.removeEventListener("resize", onResize);
       if (rafRef.current) cancelAnimationFrame(rafRef.current);
-      try { g.deleteProgram(prog); } catch {}
+      try {
+        g.deleteProgram(prog);
+      } catch {}
     };
   }, [phase, glitch]);
 
@@ -589,7 +557,9 @@ export default function BootSequence({ durationMs, onFinish, lang }: Props) {
               <div className="mono">{T.orbit_scanning}</div>
               <div className="mono weak">{T.orbit_align}</div>
               <div className="mono weak">{T.orbit_no}</div>
-              <div className="mono faint" style={{ marginTop: 10 }}>seed:{seed}</div>
+              <div className="mono faint" style={{ marginTop: 10 }}>
+                seed:{seed}
+              </div>
             </div>
           </div>
         </section>
@@ -610,7 +580,9 @@ export default function BootSequence({ durationMs, onFinish, lang }: Props) {
             <div>{T.breach_status}</div>
             <div>• {breachNote}</div>
           </div>
-          <div className="breachPulseV2 mono" aria-hidden="true">{T.breach_observing}</div>
+          <div className="breachPulseV2 mono" aria-hidden="true">
+            {T.breach_observing}
+          </div>
         </section>
       )}
 
@@ -645,8 +617,13 @@ export default function BootSequence({ durationMs, onFinish, lang }: Props) {
           </div>
 
           <div className="deployFooterV2">
-            <div className="bar"><div className="fill" style={{ width: `${progress}%` }} /></div>
-            <div className="info mono"><span>{T.deploy_footer_left}</span><span>{progress}%</span></div>
+            <div className="bar">
+              <div className="fill" style={{ width: `${progress}%` }} />
+            </div>
+            <div className="info mono">
+              <span>{T.deploy_footer_left}</span>
+              <span>{progress}%</span>
+            </div>
           </div>
 
           <div className="hint mono">{T.deploy_hint}</div>

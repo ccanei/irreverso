@@ -7,8 +7,6 @@
 
 "use client";
 
-console.log("BOOTSEQUENCE BUILD MARKER :: 2026-02-24 :: I18N_V3");
-
 import { useEffect, useMemo, useRef, useState } from "react";
 
 type Props = {
@@ -136,7 +134,7 @@ export default function BootSequence({ durationMs, onFinish, lang }: Props) {
   const [lines, setLines] = useState<string[]>([]);
 
   // ✅ IMPORTANT: always plain string to avoid literal-union SetState errors on Vercel
-  const [breachNote, setBreachNote] = useState(T.breach_note_1);
+  const [breachNote, setBreachNote] = useState<string>("");
   const [resetNote, setResetNote] = useState<string>("");
 
   const [glitch, setGlitch] = useState(false);

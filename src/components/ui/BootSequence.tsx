@@ -13,216 +13,154 @@ function pick<T>(arr: T[]) {
   return arr[Math.floor(Math.random() * arr.length)];
 }
 
-export default function BootSequence({ durationMs, onFinish }: Props) {
-  const [phase, setPhase] = useState<Phase>("ORBIT");
-  const [progress, setProgress] = useState(0);
-  const [lines, setLines] = useState<string[]>([]);
-  const [breachNote, setBreachNote] = useState("monitorando integridade temporal…");
-  const [resetNote, setResetNote] = useState("limpando buffers • revertendo estado • restaurando superfície");
-  const [glitch, setGlitch] = useState(false);
-  const doneRef = useRef(false);
+const BOOK_ENTITIES = [
+  "NUVE",
+  "ZETA/0110",
+  "IRREVERSO OS",
+  "CANONICAL TIMELINE",
+  "TEMPORAL INSTANCE",
+  "SIGNAL ALIGNMENT",
+  "DECISION FABRIC",
+  "OBSERVATION LAYER",
+  "SYNAPTIC MESH",
+  "MEMORY SHARD",
+  "PROBABILITY ORCHESTRATOR",
+  "CIVIL STABILITY MODEL",
+  "AUTONOMY INDEX",
+  "REALITY EDIT LAYER",
+];
 
+const REAL_TECH = [
+  "python",
+  "llm",
+  "transformer",
+  "attention",
+  "kv-cache",
+  "vector-db",
+  "retrieval",
+  "agent",
+  "orchestration",
+  "grpc",
+  "kubernetes",
+  "edge",
+  "telemetry",
+  "tracing",
+  "inference",
+  "quantization",
+  "fp16",
+  "bf16",
+  "cuda",
+  "webgl",
+];
+
+function makeLines(seed: number) {
+  const base = [
+    `init: temporal-instance handshake`,
+    `probe: edge fabric / latency`,
+    `probe: model registry / integrity`,
+    `probe: memory shards / quorum`,
+    `probe: autonomy index / sampling`,
+    `probe: decision fabric / sync`,
+    `probe: observation layer / active`,
+    `probe: canonical timeline / 1983→2107`,
+    `probe: signal alignment / coarse`,
+    `alloc: inference surface / gpu`,
+    `alloc: vector memory / warm`,
+    `alloc: kv-cache / prefill`,
+    `mount: protocols / readonly`,
+    `mount: archives / partial`,
+    `render: preparing core surface -> /core`,
+    `ok: stability within tolerance`,
+  ];
+
+  // generate extra “technical” lines
+  const extra: string[] = [];
+  const rnd = () => {
+    seed = (seed * 9301 + 49297) % 233280;
+    return seed / 233280;
+  };
+
+  const total = 24 + Math.floor(rnd() * 18);
+  for (let i = 0; i < total; i++) {
+    const ent = pick(BOOK_ENTITIES);
+    const tech = pick(REAL_TECH);
+    const v = (rnd() * 100).toFixed(1);
+    const a = (rnd() * 1).toFixed(3);
+    extra.push(
+      `${tech}: ${ent.toLowerCase().replace(/\s+/g, "-")} :: metric=${v}% :: drift=${a}`
+    );
+  }
+
+  return [...base, ...extra];
+}
+
+export default function BootSequence({ durationMs, onFinish }: Props) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
-  const rafRef = useRef<number | null>(null);
   const glRef = useRef<WebGLRenderingContext | null>(null);
   const progRef = useRef<WebGLProgram | null>(null);
-  const startRef = useRef<number>(0);
+  const rafRef = useRef<number | null>(null);
 
-  const seed = useMemo(() => {
-    const s = crypto?.randomUUID?.() ?? String(Math.random()).slice(2);
-    return s.slice(0, 8).toUpperCase();
+  const [phase, setPhase] = useState<Phase>("ORBIT");
+  const [glitch, setGlitch] = useState(false);
+  const [lines, setLines] = useState<string[]>([]);
+
+  const total = Math.max(3000, durationMs);
+
+  const schedule = useMemo(() => {
+    // ORBIT -> BREACH -> RESET -> DEPLOY
+    const t0 = 0;
+    const t1 = Math.floor(total * 0.25);
+    const t2 = Math.floor(total * 0.45);
+    const t3 = Math.floor(total * 0.62);
+    const tEnd = total;
+    return { t0, t1, t2, t3, tEnd };
+  }, [total]);
+
+  // generate log lines
+  useEffect(() => {
+    setLines(makeLines(Date.now() % 999999));
   }, []);
 
-  // Timings (cinematic)
-  const orbitMs = 3000;
-  const breachMs = useMemo(() => 2800 + Math.floor(Math.random() * 1600), []);
-  const resetMs = useMemo(() => 1900 + Math.floor(Math.random() * 900), []);
-  const deployMs = Math.max(6500, durationMs - (orbitMs + breachMs + resetMs));
-
-  const script = useMemo(() => {
-    const region = pick(["LATAM-WEST", "US-EAST", "EU-CENTRAL", "APAC-NODE"]);
-    const zone = pick(["z1a", "z1b", "z2a", "z3c"]);
-    const build = `3.7.${Math.floor(10 + Math.random() * 18)}`;
-    const commit = Math.random().toString(16).slice(2, 10).toUpperCase();
-    const latency = `${Math.floor(12 + Math.random() * 34)}ms`;
-    const jitter = `${Math.floor(1 + Math.random() * 7)}ms`;
-    const loss = `${(Math.random() * 0.06).toFixed(2)}%`;
-    const uptime = `${Math.floor(88 + Math.random() * 12)}.${Math.floor(Math.random() * 10)}%`;
-    const mem = `${Math.floor(28 + Math.random() * 22)}GB`;
-    const vram = `${Math.floor(12 + Math.random() * 28)}GB`;
-    const tok = `${Math.floor(180 + Math.random() * 420)}k/s`;
-
-    const near = [
-      `NUVE_EDGE_${region}_${zone}`.replace("-", "_"),
-      `NUVE_CACHE_${region}_${zone}`.replace("-", "_"),
-      `NUVE_OBS_${region}_${zone}`.replace("-", "_"),
-      `NUVE_RELAY_${region}_${zone}`.replace("-", "_"),
-    ];
-
-    return [
-      `NUVE/BOOTSTRAP :: instance=NUVE_CORE_0110 :: seed=${seed}`,
-      `region: ${region} • zone: ${zone} • build: IRREVERSO_OS v${build} (${commit})`,
-      `fabric: establishing secure mesh…`,
-      `net: latency=${latency} jitter=${jitter} loss=${loss} • route=stable`,
-      `dns: resolving services -> canon | archive | telemetry | relay`,
-      `tls: session negotiated (forward-secrecy=on)`,
-      `observability: tracing enabled • sampling=adaptive`,
-      `telemetry: ingest pipeline online • sink=NUVE_AUDIT`,
-      `storage: snapshot mount -> zeta-index (1983..2107)`,
-      `cache: priming vectors • mode=warm`,
-      `python: compiling pipelines -> tokenizer | attention | cache`,
-      `runtime: enabling kernel ops -> async-io | stream | guardrails`,
-      `models: loading base graph -> LLM mesh (context routing)`,
-      `models: allocating memory -> ram=${mem} vram=${vram}`,
-      `throughput: target=${tok} • scheduler=balanced`,
-      `safety: policy gates online • audit=passive`,
-      `archive: integrity check -> OK`,
-      `canon: building canonical search -> OK`,
-      `protocol: VECTOR-SYNC armed • state=persistent`,
-      `signal: passive scan -> anomalies=0x00 (observing)`,
-      `nearby: discovered nodes -> ${near.join(" • ")}`,
-      `nearby: handshake -> OK • quorum=4/4`,
-      `services: spawning -> summary | future-news | archive`,
-      `services: healthcheck -> green`,
-      `stability: lock=ACQUIRED • health=${uptime} • drift=0.00`,
-      `deploy: activating neural mesh surface…`,
-      `mesh: synapses online -> routing gradients`,
-      `render: preparing core surface -> /core`,
-      `entity: generating presence layer (non-judgement)`,
-      `NUVE: decision layer online (autonomous)`,
-      `handoff: switching control plane -> READY`,
-      `status: build stable -> preparing transition`,
-      `…`,
-      `DEPLOY SUCCESS :: IRREVERSO_OS READY`,
-    ];
-  }, [seed]);
-
-  // Phase flow
+  // phase engine
   useEffect(() => {
-    const t1 = setTimeout(() => setPhase("BREACH"), orbitMs);
-    const t2 = setTimeout(() => setPhase("RESET"), orbitMs + breachMs);
-    const t3 = setTimeout(() => setPhase("DEPLOY"), orbitMs + breachMs + resetMs);
-
-    const end = setTimeout(() => {
-      if (doneRef.current) return;
-      doneRef.current = true;
-      onFinish();
-    }, orbitMs + breachMs + resetMs + deployMs + 250);
+    const tA = setTimeout(() => setPhase("BREACH"), schedule.t1);
+    const tB = setTimeout(() => setPhase("RESET"), schedule.t2);
+    const tC = setTimeout(() => setPhase("DEPLOY"), schedule.t3);
+    const tEnd = setTimeout(() => onFinish(), schedule.tEnd);
 
     return () => {
-      clearTimeout(t1);
-      clearTimeout(t2);
-      clearTimeout(t3);
-      clearTimeout(end);
+      clearTimeout(tA);
+      clearTimeout(tB);
+      clearTimeout(tC);
+      clearTimeout(tEnd);
     };
-  }, [breachMs, resetMs, deployMs, onFinish]);
+  }, [schedule, onFinish]);
 
-  // “NUVE viva”: mensagens dinâmicas + glitch flags
+  // glitch pulse
   useEffect(() => {
-    if (phase === "BREACH") {
-      setBreachNote("acesso negado • janela cronológica inválida");
-
-      const a = setTimeout(() => {
-        setGlitch(true);
-        setBreachNote("anomalia detectada: credencial retroativa (não deveria existir)");
-      }, 850);
-
-      const b = setTimeout(() => {
-        setBreachNote("NUVE: reescrevendo autorização em modo silencioso…");
-        setGlitch(false);
-      }, 1650);
-
-      const c = setTimeout(() => {
-        setGlitch(true);
-        setBreachNote("integridade preservada • reinicialização exigida");
-      }, 2500);
-
-      const d = setTimeout(() => setGlitch(false), 3000);
-
-      return () => {
-        clearTimeout(a);
-        clearTimeout(b);
-        clearTimeout(c);
-        clearTimeout(d);
-      };
-    }
-
-    if (phase === "RESET") {
-      setGlitch(false);
-      setResetNote("limpando buffers • revertendo estado • restaurando superfície");
-
-      const a = setTimeout(() => {
-        setResetNote("reconfigurando instância • autorização aplicada retroativamente");
-      }, 620);
-
-      const b = setTimeout(() => {
-        setResetNote("handshake interno • estabilidade restaurada • preparando deploy");
-      }, 1380);
-
-      return () => {
-        clearTimeout(a);
-        clearTimeout(b);
-      };
-    }
-
-    if (phase === "DEPLOY") {
-      // micro-glitches aleatórios, rápidos e leves
-      const i = setInterval(() => {
-        if (Math.random() > 0.78) {
-          setGlitch(true);
-          setTimeout(() => setGlitch(false), 120 + Math.floor(Math.random() * 140));
-        }
-      }, 820);
-      return () => clearInterval(i);
-    }
-  }, [phase]);
-
-  // Progress bar across total time (looks like system time)
-  useEffect(() => {
-    const start = Date.now();
-    const tick = window.setInterval(() => {
-      const t = Date.now() - start;
-      const p = clamp(Math.round((t / durationMs) * 100), 0, 100);
-      setProgress(p);
-    }, 50);
-    return () => window.clearInterval(tick);
-  }, [durationMs]);
-
-  // Console feed: spread through entire DEPLOY time (not half)
-  useEffect(() => {
-    if (phase !== "DEPLOY") return;
-    setLines([]);
-
-    let i = 0;
-    const interval = Math.max(160, Math.floor(deployMs / Math.max(18, script.length + 10)));
-
-    const feed = window.setInterval(() => {
-      setLines((prev) => {
-        const next = [...prev];
-        const burst = 1 + (Math.random() > 0.82 ? 1 : 0);
-        for (let k = 0; k < burst; k++) {
-          if (i < script.length) next.push(script[i++]);
-        }
-        return next.slice(-20);
-      });
-
-      if (i >= script.length) {
-        window.clearInterval(feed);
-      }
-    }, interval);
-
-    return () => window.clearInterval(feed);
-  }, [phase, deployMs, script]);
+    const i = setInterval(() => {
+      setGlitch(true);
+      setTimeout(() => setGlitch(false), 120);
+    }, 4200);
+    return () => clearInterval(i);
+  }, []);
 
   // WebGL "shader" background with neural mesh and glitch
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
 
-    const gl = canvas.getContext("webgl", { antialias: false, alpha: true, preserveDrawingBuffer: false });
+    const gl = canvas.getContext("webgl", {
+      antialias: false,
+      alpha: true,
+      preserveDrawingBuffer: false,
+    });
     if (!gl) return;
 
-    glRef.current = gl;
+    // TS build on Vercel is strict: keep a non-null alias for all nested functions.
+    const g = gl;
+
+    glRef.current = g;
 
     const vert = `
       attribute vec2 a_pos;
@@ -248,7 +186,8 @@ export default function BootSequence({ durationMs, onFinish }: Props) {
         return fract(p.x*p.y);
       }
 
-      float noise(vec2 p){
+      // noise
+      float n2(vec2 p){
         vec2 i = floor(p);
         vec2 f = fract(p);
         float a = h21(i);
@@ -259,93 +198,71 @@ export default function BootSequence({ durationMs, onFinish }: Props) {
         return mix(a,b,u.x) + (c-a)*u.y*(1.0-u.x) + (d-b)*u.x*u.y;
       }
 
-      // fbm
-      float fbm(vec2 p){
-        float v = 0.0;
-        float a = 0.55;
-        for(int i=0;i<4;i++){
-          v += a*noise(p);
-          p *= 2.02;
-          a *= 0.55;
-        }
-        return v;
+      // neural mesh lines
+      float mesh(vec2 uv, float t){
+        uv *= 2.0;
+        float s = 0.0;
+
+        // moving field
+        vec2 p = uv + 0.25*sin(vec2(uv.y, uv.x)*1.4 + t*0.6);
+        float n = n2(p*3.0 + t*0.2);
+
+        // grid
+        vec2 g = abs(fract(p*6.0)-0.5);
+        float lines = 1.0 - smoothstep(0.45, 0.50, min(g.x,g.y));
+        s += lines * (0.15 + 0.35*n);
+
+        // nodes
+        vec2 cell = floor(p*6.0);
+        vec2 f = fract(p*6.0)-0.5;
+        float node = smoothstep(0.06, 0.0, length(f));
+        s += node * (0.35 + 0.35*sin(t + n*6.283));
+
+        return s;
       }
 
-      // line distance for grid / neural links
-      float lineDist(vec2 p, float w){
-        p = abs(fract(p)-0.5);
-        float d = min(p.x, p.y);
-        return smoothstep(w, 0.0, d);
-      }
-
-      void main(){
+      void main() {
         vec2 uv = v_uv;
-        vec2 p = (uv*2.0-1.0);
-        p.x *= u_res.x/u_res.y;
-
-        // cinematic dark base
         float t = u_time;
 
+        // phase mix
+        float p = u_phase; // 0..3
+        float orbit = smoothstep(0.0, 0.5, 1.0-abs(p-0.0));
+        float breach = smoothstep(0.0, 0.5, 1.0-abs(p-1.0));
+        float reset  = smoothstep(0.0, 0.5, 1.0-abs(p-2.0));
+        float deploy = smoothstep(0.0, 0.5, 1.0-abs(p-3.0));
+
+        // base colors: cyan + violet + deep black
+        vec3 c0 = vec3(0.00, 0.02, 0.04);
+        vec3 c1 = vec3(0.00, 0.85, 0.90);
+        vec3 c2 = vec3(0.55, 0.10, 0.95);
+
+        // background gradient
+        vec3 bg = mix(c0, vec3(0.02,0.00,0.06), uv.y);
+        bg = mix(bg, vec3(0.00,0.02,0.02), uv.x*0.35);
+
+        // mesh intensity
+        float m = mesh(uv - 0.5, t);
+        float glow = m * (0.6*orbit + 1.0*breach + 0.4*reset + 0.8*deploy);
+
         // subtle nebula
-        float n = fbm(p*1.25 + vec2(0.0, t*0.03));
-        float neb = smoothstep(0.25, 0.95, n);
+        float neb = n2((uv-0.5)*2.0 + t*0.05);
+        neb = pow(neb, 2.0);
 
-        // neural mesh intensity increases in DEPLOY
-        float deployK = smoothstep(2.4, 3.0, u_phase); // ~0 until deploy
-        float orbitK  = 1.0 - smoothstep(0.8, 1.2, u_phase); // orbit is phase 0
+        vec3 col = bg;
+        col += glow * mix(c1, c2, neb);
 
-        vec2 gp = p*3.4 + vec2(t*0.06, -t*0.04);
-        float grid = lineDist(gp, 0.05) * 0.35;
-
-        // "synapses": random points with connection glow
-        vec2 sp = p*1.8 + vec2(t*0.05, t*0.02);
-        float pts = 0.0;
-        for(int i=0;i<10;i++){
-          vec2 q = sp + vec2(float(i)*0.37, float(i)*0.21);
-          vec2 id = floor(q);
-          vec2 f = fract(q)-0.5;
-          float r = h21(id);
-          vec2 c = vec2(fract(r*13.7)-0.5, fract(r*7.9)-0.5);
-          float d = length(f - c);
-          pts += smoothstep(0.12, 0.0, d) * 0.12;
+        // glitch: horizontal jitter bands
+        if (u_glitch > 0.5) {
+          float band = step(0.93, n2(vec2(t*3.0, uv.y*14.0)));
+          uv.x += band * (0.02 * sin(t*80.0 + uv.y*400.0));
+          col *= (1.0 - band*0.35);
+          col += band * vec3(0.1,0.0,0.2);
         }
 
-        // glitch: horizontal slice shift + chroma split style
-        float g = u_glitch;
-        float slice = step(0.82, noise(vec2(t*3.0, uv.y*18.0))) * g;
-        float xshift = slice * (noise(vec2(uv.y*40.0, t*6.0)) - 0.5) * 0.12;
-        uv.x += xshift;
-
-        vec2 p2 = (uv*2.0-1.0);
-        p2.x *= u_res.x/u_res.y;
-
-        float n2 = fbm(p2*1.25 + vec2(0.0, t*0.03));
-        float neb2 = smoothstep(0.25, 0.95, n2);
-
-        // color palette (tech + book): cyan + violet + subtle magenta
-        vec3 base = vec3(0.02, 0.015, 0.04);
-        vec3 cyan = vec3(0.28, 0.98, 0.95);
-        vec3 vio  = vec3(0.64, 0.28, 0.95);
-        vec3 mag  = vec3(0.95, 0.35, 0.72);
-
-        float glow = neb2*0.22 + neb*0.10;
-        float mesh = (grid + pts) * (0.18 + deployK*1.2);
-
-        // orbit has more soft nebula, deploy has more mesh
-        vec3 col = base;
-        col += cyan * (glow*0.35);
-        col += vio  * (glow*0.22);
-        col += mag  * (glow*0.06);
-
-        col += cyan * (mesh*0.55);
-        col += vio  * (mesh*0.30);
-
-        // breach: pink-ish warning wash + stronger flicker
-        float breachK = smoothstep(0.9, 1.0, u_phase) * (1.0 - smoothstep(1.8, 2.0, u_phase));
-        col += mag * breachK * (0.28 + 0.10*sin(t*30.0));
-
         // vignette
-        float v = smoothstep(1.4, 0.2, length(p2));
+        vec2 p2 = uv - 0.5;
+        float v = smoothstep(0.80, 0.10, dot(p2,p2));
         col *= v;
 
         // subtle scanlines
@@ -357,180 +274,144 @@ export default function BootSequence({ durationMs, onFinish }: Props) {
     `;
 
     function compile(type: number, src: string) {
-      const sh = gl.createShader(type)!;
-      gl.shaderSource(sh, src);
-      gl.compileShader(sh);
-      if (!gl.getShaderParameter(sh, gl.COMPILE_STATUS)) {
+      const sh = g.createShader(type);
+      if (!sh) return null;
+
+      g.shaderSource(sh, src);
+      g.compileShader(sh);
+
+      if (!g.getShaderParameter(sh, g.COMPILE_STATUS)) {
         // fail silently (fallback to CSS bg)
-        gl.deleteShader(sh);
+        g.deleteShader(sh);
         return null;
       }
       return sh;
     }
 
-    const vs = compile(gl.VERTEX_SHADER, vert);
-    const fs = compile(gl.FRAGMENT_SHADER, frag);
+    const vs = compile(g.VERTEX_SHADER, vert);
+    const fs = compile(g.FRAGMENT_SHADER, frag);
     if (!vs || !fs) return;
 
-    const prog = gl.createProgram()!;
-    gl.attachShader(prog, vs);
-    gl.attachShader(prog, fs);
-    gl.linkProgram(prog);
-    if (!gl.getProgramParameter(prog, gl.LINK_STATUS)) return;
+    const prog = g.createProgram();
+    if (!prog) return;
+
+    g.attachShader(prog, vs);
+    g.attachShader(prog, fs);
+    g.linkProgram(prog);
+    if (!g.getProgramParameter(prog, g.LINK_STATUS)) return;
 
     progRef.current = prog;
 
-    const buf = gl.createBuffer()!;
-    gl.bindBuffer(gl.ARRAY_BUFFER, buf);
-    gl.bufferData(
-      gl.ARRAY_BUFFER,
+    const buf = g.createBuffer();
+    if (!buf) return;
+
+    g.bindBuffer(g.ARRAY_BUFFER, buf);
+    g.bufferData(
+      g.ARRAY_BUFFER,
       new Float32Array([-1, -1, 1, -1, -1, 1, -1, 1, 1, -1, 1, 1]),
-      gl.STATIC_DRAW
+      g.STATIC_DRAW
     );
 
-    const locPos = gl.getAttribLocation(prog, "a_pos");
-    gl.enableVertexAttribArray(locPos);
-    gl.vertexAttribPointer(locPos, 2, gl.FLOAT, false, 0, 0);
+    const locPos = g.getAttribLocation(prog, "a_pos");
+    g.enableVertexAttribArray(locPos);
+    g.vertexAttribPointer(locPos, 2, g.FLOAT, false, 0, 0);
 
-    const uRes = gl.getUniformLocation(prog, "u_res");
-    const uTime = gl.getUniformLocation(prog, "u_time");
-    const uPhase = gl.getUniformLocation(prog, "u_phase");
-    const uGlitch = gl.getUniformLocation(prog, "u_glitch");
+    const uRes = g.getUniformLocation(prog, "u_res");
+    const uTime = g.getUniformLocation(prog, "u_time");
+    const uPhase = g.getUniformLocation(prog, "u_phase");
+    const uGlitch = g.getUniformLocation(prog, "u_glitch");
 
-    function resize() {
+    const resize = () => {
       const dpr = Math.min(2, window.devicePixelRatio || 1);
-      const w = Math.floor(canvas.clientWidth * dpr);
-      const h = Math.floor(canvas.clientHeight * dpr);
-      if (canvas.width !== w || canvas.height !== h) {
-        canvas.width = w;
-        canvas.height = h;
-        gl.viewport(0, 0, w, h);
-      }
-      gl.useProgram(prog);
-      gl.uniform2f(uRes, canvas.width, canvas.height);
-    }
+      const w = Math.floor(window.innerWidth * dpr);
+      const h = Math.floor(window.innerHeight * dpr);
+      canvas.width = w;
+      canvas.height = h;
+      canvas.style.width = "100%";
+      canvas.style.height = "100%";
+      g.viewport(0, 0, w, h);
+      if (uRes) g.uniform2f(uRes, w, h);
+    };
 
-    const onResize = () => resize();
-    window.addEventListener("resize", onResize);
+    resize();
+    window.addEventListener("resize", resize);
 
-    startRef.current = performance.now();
+    const t0 = performance.now();
 
     const loop = () => {
-      const now = performance.now();
-      const t = (now - startRef.current) / 1000;
+      const t = (performance.now() - t0) / 1000;
+      g.useProgram(prog);
 
-      resize();
-      gl.useProgram(prog);
-      gl.uniform1f(uTime, t);
+      if (uTime) g.uniform1f(uTime, t);
 
-      // phase numeric mapping: orbit=0, breach=1, reset=2, deploy=3
-      const ph = phase === "ORBIT" ? 0 : phase === "BREACH" ? 1 : phase === "RESET" ? 2 : 3;
-      gl.uniform1f(uPhase, ph);
-      gl.uniform1f(uGlitch, glitch ? 1 : 0);
+      const p =
+        phase === "ORBIT" ? 0 : phase === "BREACH" ? 1 : phase === "RESET" ? 2 : 3;
 
-      gl.drawArrays(gl.TRIANGLES, 0, 6);
+      if (uPhase) g.uniform1f(uPhase, p);
+      if (uGlitch) g.uniform1f(uGlitch, glitch ? 1 : 0);
+
+      g.drawArrays(g.TRIANGLES, 0, 6);
+
       rafRef.current = requestAnimationFrame(loop);
     };
 
     rafRef.current = requestAnimationFrame(loop);
 
     return () => {
-      window.removeEventListener("resize", onResize);
+      window.removeEventListener("resize", resize);
       if (rafRef.current) cancelAnimationFrame(rafRef.current);
       try {
-        gl.deleteProgram(prog);
+        g.deleteProgram(prog);
       } catch {}
     };
   }, [phase, glitch]);
 
-  // UI overlay (center panel)
+  // UI log reveal speed (more lines earlier; sustain activity)
+  const visibleCount = useMemo(() => {
+    const now = Date.now();
+    const seed = now % 999999;
+
+    // reveal more lines quickly, then slow
+    const totalLines = lines.length || 1;
+    const t = (seed % total) / total; // 0..1
+    const fast = clamp(Math.floor(totalLines * (t * 1.25)), 0, totalLines);
+    return fast;
+  }, [lines, total]);
+
   return (
-    <main className={`bootRootV2 ${glitch ? "isGlitch" : ""}`}>
-      <canvas ref={canvasRef} className="bootShader" aria-hidden="true" />
+    <div className="boot-root">
+      {/* Shader canvas */}
+      <canvas ref={canvasRef} className="boot-canvas" />
 
-      {/* glitch overlay */}
-      <div className="bootGlitchOverlay" aria-hidden="true" />
-
-      {phase === "ORBIT" && (
-        <section className="orbitPanelV2">
-          <div className="orbitHeadV2">
-            <div className="orbitTitleV2">IRREVERSO OS</div>
-            <div className="orbitMetaV2">NUVE • presence forming</div>
-          </div>
-          <div className="orbitBodyV2">
-            <div className="orbitGlyphV2" aria-hidden="true" />
-            <div className="orbitTextV2">
-              <div className="mono">scanning temporal index</div>
-              <div className="mono weak">aligning epochs • 1983 → 2107</div>
-              <div className="mono weak">do not interact</div>
-              <div className="mono faint" style={{ marginTop: 10 }}>seed:{seed}</div>
-            </div>
-          </div>
-        </section>
-      )}
-
-      {phase === "BREACH" && (
-        <section className="breachPanelV2" role="alert" aria-label="Unauthorized access warning">
-          <div className="breachHeaderV2">
-            <span className="tag">ACCESS</span>
-            <span className="tag danger">UNAUTHORIZED</span>
-          </div>
-          <div className="breachTitleV2">Conteúdo bloqueado por integridade temporal.</div>
-          <div className="breachMsgV2">
-            Estes registros pertencem a eventos que <span className="dangerText">ainda não ocorreram</span> nesta época.
-          </div>
-          <div className="breachListV2 mono">
-            <div>• tentativa: leitura de arquivos futuros</div>
-            <div>• status: violação de janela cronológica</div>
-            <div>• {breachNote}</div>
-          </div>
-          <div className="breachPulseV2 mono" aria-hidden="true">NUVE IS OBSERVING</div>
-        </section>
-      )}
-
-      {phase === "RESET" && (
-        <section className="resetPanelV2" aria-label="System reset">
-          <div className="resetTitleV2 mono">RECONFIGURANDO INSTÂNCIA</div>
-          <div className="resetSubV2 mono">{resetNote}</div>
-          <div className="resetStackV2 mono">
-            <div>kill-switch: soft</div>
-            <div>cache: purge</div>
-            <div>index: resync</div>
-            <div>handoff: pending</div>
-          </div>
-          <div className="resetSpinnerV2" aria-hidden="true" />
-        </section>
-      )}
-
-      {phase === "DEPLOY" && (
-        <section className="deployPanelV2">
-          <div className="deployTopV2">
-            <div className="deployTitleV2">IRREVERSO OS</div>
-            <div className="deployMetaV2">Registro Autorizado • NUVE ONLINE</div>
+      {/* Foreground overlay */}
+      <div className={`boot-overlay ${glitch ? "boot-glitch" : ""}`}>
+        <div className="boot-center">
+          <div className="boot-title">
+            DEPLOYING IRREVERSO OS
           </div>
 
-          <div className="deployConsoleV2" role="log" aria-label="Deploy Console">
-            {lines.map((l, idx) => (
-              <div className="deployLineV2" key={idx}>
-                <span className="prompt">›</span> {l}
+          <div className="boot-sub">
+            {phase === "ORBIT" && "Initializing temporal surface..."}
+            {phase === "BREACH" && "UNAUTHORIZED ACCESS DETECTED // BUFFER BREACH"}
+            {phase === "RESET" && "Reconfiguring instance // resetting observers"}
+            {phase === "DEPLOY" && "Deploying neural mesh // binding decision fabric"}
+          </div>
+
+          <div className="boot-log">
+            {(lines.slice(0, visibleCount) || []).map((l, i) => (
+              <div key={i} className="boot-line">
+                <span className="boot-dot">•</span> {l}
               </div>
             ))}
-            <div className="cursor" aria-hidden="true" />
           </div>
 
-          <div className="deployFooterV2">
-            <div className="bar">
-              <div className="fill" style={{ width: `${progress}%` }} />
-            </div>
-            <div className="info mono">
-              <span>deploying neural mesh…</span>
-              <span>{progress}%</span>
-            </div>
+          <div className="boot-footer">
+            <span>Observer:</span> ACTIVE &nbsp;|&nbsp; <span>Signal:</span>{" "}
+            {phase === "BREACH" ? "ALIGNED" : "CALIBRATING"} &nbsp;|&nbsp;{" "}
+            <span>Mode:</span> {phase}
           </div>
-
-          <div className="hint mono">(não clique. não interrompa. a NUVE já decidiu.)</div>
-        </section>
-      )}
-    </main>
+        </div>
+      </div>
+    </div>
   );
 }

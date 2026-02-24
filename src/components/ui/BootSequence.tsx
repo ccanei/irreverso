@@ -1,15 +1,25 @@
-// BootSequence.tsx — NUVE Cinematic Boot (Shader + Glitch + Neural Mesh)
+// BootSequence.tsx — NUVE Cinematic Boot (Shader + Glitch + Neural Mesh) + i18n (pt/en/es-ready)
 // ✅ Vercel/Next strict TS fixes:
 //   - Never reference canvasRef.current directly inside nested funcs (alias `c`)
 //   - Never reference gl directly inside nested funcs (alias `g`)
 //   - Guard nullable WebGL returns: createShader/createProgram/createBuffer/getUniformLocation
 //   - Keep original classNames (bootRootV2, bootShader, deployPanelV2...) to preserve your visual
+//
+// ✅ i18n rules:
+//   - If lang prop is provided ("pt" | "en" | "es"), it wins
+//   - Else, detect from navigator.language (pt* => pt, es* => es, otherwise en)
+//   - Spanish is included. If you want only PT/EN for now, just avoid passing "es".
 
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
 
-type Props = { durationMs: number; onFinish: () => void };
+type Props = {
+  durationMs: number;
+  onFinish: () => void;
+  lang?: "pt" | "en" | "es";
+};
+
 type Phase = "ORBIT" | "BREACH" | "RESET" | "DEPLOY";
 
 function clamp(n: number, a: number, b: number) {
@@ -19,12 +29,116 @@ function pick<T>(arr: T[]) {
   return arr[Math.floor(Math.random() * arr.length)];
 }
 
-export default function BootSequence({ durationMs, onFinish }: Props) {
+function detectLang(): "pt" | "en" | "es" {
+  if (typeof navigator === "undefined") return "en";
+  const raw = (navigator.language || "en").toLowerCase();
+  if (raw.startsWith("pt")) return "pt";
+  if (raw.startsWith("es")) return "es";
+  return "en";
+}
+
+const DICT = {
+  pt: {
+    orbit_meta: "NUVE • presença se formando",
+    orbit_scanning: "escaneando índice temporal",
+    orbit_align: "alinhando épocas • 1983 → 2107",
+    orbit_no: "não interaja",
+    breach_access: "ACESSO",
+    breach_unauth: "NÃO AUTORIZADO",
+    breach_title: "Conteúdo bloqueado por integridade temporal.",
+    breach_msg_a: "Estes registros pertencem a eventos que",
+    breach_msg_b: "ainda não ocorreram",
+    breach_msg_c: "nesta época.",
+    breach_try: "• tentativa: leitura de arquivos futuros",
+    breach_status: "• status: violação de janela cronológica",
+    breach_observing: "NUVE ESTÁ OBSERVANDO",
+    reset_title: "RECONFIGURANDO INSTÂNCIA",
+    reset_kill: "kill-switch: soft",
+    reset_cache: "cache: purge",
+    reset_index: "index: resync",
+    reset_handoff: "handoff: pending",
+    deploy_meta: "Registro Autorizado • NUVE ONLINE",
+    deploy_footer_left: "ativando malha neural…",
+    deploy_hint: "(não clique. não interrompa. a NUVE já decidiu.)",
+    breach_note_1: "acesso negado • janela cronológica inválida",
+    breach_note_2: "anomalia detectada: credencial retroativa (não deveria existir)",
+    breach_note_3: "NUVE: reescrevendo autorização em modo silencioso…",
+    breach_note_4: "integridade preservada • reinicialização exigida",
+    reset_note_1: "limpando buffers • revertendo estado • restaurando superfície",
+    reset_note_2: "reconfigurando instância • autorização aplicada retroativamente",
+    reset_note_3: "handshake interno • estabilidade restaurada • preparando deploy",
+  },
+  en: {
+    orbit_meta: "NUVE • presence forming",
+    orbit_scanning: "scanning temporal index",
+    orbit_align: "aligning epochs • 1983 → 2107",
+    orbit_no: "do not interact",
+    breach_access: "ACCESS",
+    breach_unauth: "UNAUTHORIZED",
+    breach_title: "Content blocked by temporal integrity.",
+    breach_msg_a: "These records belong to events that",
+    breach_msg_b: "have not yet happened",
+    breach_msg_c: "in this era.",
+    breach_try: "• attempt: reading future archives",
+    breach_status: "• status: timeline window violation",
+    breach_observing: "NUVE IS OBSERVING",
+    reset_title: "RECONFIGURING INSTANCE",
+    reset_kill: "kill-switch: soft",
+    reset_cache: "cache: purge",
+    reset_index: "index: resync",
+    reset_handoff: "handoff: pending",
+    deploy_meta: "Authorized Record • NUVE ONLINE",
+    deploy_footer_left: "deploying neural mesh…",
+    deploy_hint: "(do not click. do not interrupt. NUVE already decided.)",
+    breach_note_1: "access denied • invalid timeline window",
+    breach_note_2: "anomaly detected: retroactive credential (should not exist)",
+    breach_note_3: "NUVE: rewriting authorization in silent mode…",
+    breach_note_4: "integrity preserved • reboot required",
+    reset_note_1: "clearing buffers • reverting state • restoring surface",
+    reset_note_2: "reconfiguring instance • retroactive authorization applied",
+    reset_note_3: "internal handshake • stability restored • preparing deploy",
+  },
+  es: {
+    orbit_meta: "NUVE • presencia en formación",
+    orbit_scanning: "escaneando índice temporal",
+    orbit_align: "alineando épocas • 1983 → 2107",
+    orbit_no: "no interactúes",
+    breach_access: "ACCESO",
+    breach_unauth: "NO AUTORIZADO",
+    breach_title: "Contenido bloqueado por integridad temporal.",
+    breach_msg_a: "Estos registros pertenecen a eventos que",
+    breach_msg_b: "aún no han ocurrido",
+    breach_msg_c: "en esta época.",
+    breach_try: "• intento: lectura de archivos futuros",
+    breach_status: "• estado: violación de ventana temporal",
+    breach_observing: "NUVE ESTÁ OBSERVANDO",
+    reset_title: "RECONFIGURANDO INSTANCIA",
+    reset_kill: "kill-switch: soft",
+    reset_cache: "cache: purge",
+    reset_index: "index: resync",
+    reset_handoff: "handoff: pending",
+    deploy_meta: "Registro Autorizado • NUVE ONLINE",
+    deploy_footer_left: "desplegando malla neural…",
+    deploy_hint: "(no hagas clic. no interrumpas. la NUVE ya decidió.)",
+    breach_note_1: "acceso denegado • ventana temporal inválida",
+    breach_note_2: "anomalía detectada: credencial retroactiva (no debería existir)",
+    breach_note_3: "NUVE: reescribiendo autorización en modo silencioso…",
+    breach_note_4: "integridad preservada • reinicio requerido",
+    reset_note_1: "limpiando buffers • revirtiendo estado • restaurando superficie",
+    reset_note_2: "reconfigurando instancia • autorización retroactiva aplicada",
+    reset_note_3: "handshake interno • estabilidad restaurada • preparando despliegue",
+  },
+} as const;
+
+export default function BootSequence({ durationMs, onFinish, lang }: Props) {
+  const resolvedLang = useMemo(() => lang ?? detectLang(), [lang]);
+  const T = DICT[resolvedLang];
+
   const [phase, setPhase] = useState<Phase>("ORBIT");
   const [progress, setProgress] = useState(0);
   const [lines, setLines] = useState<string[]>([]);
-  const [breachNote, setBreachNote] = useState("monitorando integridade temporal…");
-  const [resetNote, setResetNote] = useState("limpando buffers • revertendo estado • restaurando superfície");
+  const [breachNote, setBreachNote] = useState(T.breach_note_1);
+  const [resetNote, setResetNote] = useState(T.reset_note_1);
   const [glitch, setGlitch] = useState(false);
   const doneRef = useRef(false);
 
@@ -32,12 +146,17 @@ export default function BootSequence({ durationMs, onFinish }: Props) {
   const rafRef = useRef<number | null>(null);
   const startRef = useRef<number>(0);
 
+  useEffect(() => {
+    if (phase === "BREACH") setBreachNote(T.breach_note_1);
+    if (phase === "RESET") setResetNote(T.reset_note_1);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [resolvedLang]);
+
   const seed = useMemo(() => {
     const s = (globalThis.crypto?.randomUUID?.() ?? String(Math.random()).slice(2));
     return s.slice(0, 8).toUpperCase();
   }, []);
 
-  // Timings (cinematic)
   const orbitMs = 3000;
   const breachMs = useMemo(() => 2800 + Math.floor(Math.random() * 1600), []);
   const resetMs = useMemo(() => 1900 + Math.floor(Math.random() * 900), []);
@@ -63,13 +182,42 @@ export default function BootSequence({ durationMs, onFinish }: Props) {
       `NUVE_RELAY_${region}_${zone}`.replace("-", "_"),
     ];
 
+    const L = resolvedLang;
+
+    const phrases = {
+      pt: {
+        bootstrap: "NUVE/BOOTSTRAP",
+        fabric: "fabric: estabelecendo malha segura…",
+        tls: "tls: sessão negociada (forward-secrecy=on)",
+        deploy: "deploy: ativando malha neural…",
+        render: "render: preparando superfície core -> /core",
+        success: "DEPLOY SUCCESS :: IRREVERSO_OS READY",
+      },
+      en: {
+        bootstrap: "NUVE/BOOTSTRAP",
+        fabric: "fabric: establishing secure mesh…",
+        tls: "tls: session negotiated (forward-secrecy=on)",
+        deploy: "deploy: activating neural mesh…",
+        render: "render: preparing core surface -> /core",
+        success: "DEPLOY SUCCESS :: IRREVERSO_OS READY",
+      },
+      es: {
+        bootstrap: "NUVE/BOOTSTRAP",
+        fabric: "fabric: estableciendo malla segura…",
+        tls: "tls: sesión negociada (forward-secrecy=on)",
+        deploy: "deploy: activando malla neural…",
+        render: "render: preparando superficie core -> /core",
+        success: "DEPLOY SUCCESS :: IRREVERSO_OS READY",
+      },
+    }[L];
+
     return [
-      `NUVE/BOOTSTRAP :: instance=NUVE_CORE_0110 :: seed=${seed}`,
+      `${phrases.bootstrap} :: instance=NUVE_CORE_0110 :: seed=${seed}`,
       `region: ${region} • zone: ${zone} • build: IRREVERSO_OS v${build} (${commit})`,
-      `fabric: establishing secure mesh…`,
+      phrases.fabric,
       `net: latency=${latency} jitter=${jitter} loss=${loss} • route=stable`,
       `dns: resolving services -> canon | archive | telemetry | relay`,
-      `tls: session negotiated (forward-secrecy=on)`,
+      phrases.tls,
       `observability: tracing enabled • sampling=adaptive`,
       `telemetry: ingest pipeline online • sink=NUVE_AUDIT`,
       `storage: snapshot mount -> zeta-index (1983..2107)`,
@@ -89,19 +237,18 @@ export default function BootSequence({ durationMs, onFinish }: Props) {
       `services: spawning -> summary | future-news | archive`,
       `services: healthcheck -> green`,
       `stability: lock=ACQUIRED • health=${uptime} • drift=0.00`,
-      `deploy: activating neural mesh surface…`,
+      phrases.deploy,
       `mesh: synapses online -> routing gradients`,
-      `render: preparing core surface -> /core`,
+      phrases.render,
       `entity: generating presence layer (non-judgement)`,
       `NUVE: decision layer online (autonomous)`,
       `handoff: switching control plane -> READY`,
       `status: build stable -> preparing transition`,
       `…`,
-      `DEPLOY SUCCESS :: IRREVERSO_OS READY`,
+      phrases.success,
     ];
-  }, [seed]);
+  }, [seed, resolvedLang]);
 
-  // Phase flow
   useEffect(() => {
     const t1 = setTimeout(() => setPhase("BREACH"), orbitMs);
     const t2 = setTimeout(() => setPhase("RESET"), orbitMs + breachMs);
@@ -121,24 +268,23 @@ export default function BootSequence({ durationMs, onFinish }: Props) {
     };
   }, [breachMs, resetMs, deployMs, onFinish]);
 
-  // “NUVE viva”: mensagens dinâmicas + glitch flags
   useEffect(() => {
     if (phase === "BREACH") {
-      setBreachNote("acesso negado • janela cronológica inválida");
+      setBreachNote(T.breach_note_1);
 
       const a = setTimeout(() => {
         setGlitch(true);
-        setBreachNote("anomalia detectada: credencial retroativa (não deveria existir)");
+        setBreachNote(T.breach_note_2);
       }, 850);
 
       const b = setTimeout(() => {
-        setBreachNote("NUVE: reescrevendo autorização em modo silencioso…");
+        setBreachNote(T.breach_note_3);
         setGlitch(false);
       }, 1650);
 
       const c = setTimeout(() => {
         setGlitch(true);
-        setBreachNote("integridade preservada • reinicialização exigida");
+        setBreachNote(T.breach_note_4);
       }, 2500);
 
       const d = setTimeout(() => setGlitch(false), 3000);
@@ -153,15 +299,10 @@ export default function BootSequence({ durationMs, onFinish }: Props) {
 
     if (phase === "RESET") {
       setGlitch(false);
-      setResetNote("limpando buffers • revertendo estado • restaurando superfície");
+      setResetNote(T.reset_note_1);
 
-      const a = setTimeout(() => {
-        setResetNote("reconfigurando instância • autorização aplicada retroativamente");
-      }, 620);
-
-      const b = setTimeout(() => {
-        setResetNote("handshake interno • estabilidade restaurada • preparando deploy");
-      }, 1380);
+      const a = setTimeout(() => setResetNote(T.reset_note_2), 620);
+      const b = setTimeout(() => setResetNote(T.reset_note_3), 1380);
 
       return () => {
         clearTimeout(a);
@@ -178,20 +319,17 @@ export default function BootSequence({ durationMs, onFinish }: Props) {
       }, 820);
       return () => clearInterval(i);
     }
-  }, [phase]);
+  }, [phase, T]);
 
-  // Progress bar
   useEffect(() => {
     const start = Date.now();
     const tick = window.setInterval(() => {
       const t = Date.now() - start;
-      const p = clamp(Math.round((t / durationMs) * 100), 0, 100);
-      setProgress(p);
+      setProgress(clamp(Math.round((t / durationMs) * 100), 0, 100));
     }, 50);
     return () => window.clearInterval(tick);
   }, [durationMs]);
 
-  // Console feed
   useEffect(() => {
     if (phase !== "DEPLOY") return;
     setLines([]);
@@ -208,7 +346,6 @@ export default function BootSequence({ durationMs, onFinish }: Props) {
         }
         return next.slice(-20);
       });
-
       if (i >= script.length) window.clearInterval(feed);
     }, interval);
 
@@ -223,7 +360,6 @@ export default function BootSequence({ durationMs, onFinish }: Props) {
     const gl = canvasEl.getContext("webgl", { antialias: false, alpha: true, preserveDrawingBuffer: false });
     if (!gl) return;
 
-    // ✅ aliases never-null for strict TS
     const c = canvasEl;
     const g = gl;
 
@@ -438,14 +574,14 @@ export default function BootSequence({ durationMs, onFinish }: Props) {
         <section className="orbitPanelV2">
           <div className="orbitHeadV2">
             <div className="orbitTitleV2">IRREVERSO OS</div>
-            <div className="orbitMetaV2">NUVE • presence forming</div>
+            <div className="orbitMetaV2">{T.orbit_meta}</div>
           </div>
           <div className="orbitBodyV2">
             <div className="orbitGlyphV2" aria-hidden="true" />
             <div className="orbitTextV2">
-              <div className="mono">scanning temporal index</div>
-              <div className="mono weak">aligning epochs • 1983 → 2107</div>
-              <div className="mono weak">do not interact</div>
+              <div className="mono">{T.orbit_scanning}</div>
+              <div className="mono weak">{T.orbit_align}</div>
+              <div className="mono weak">{T.orbit_no}</div>
               <div className="mono faint" style={{ marginTop: 10 }}>seed:{seed}</div>
             </div>
           </div>
@@ -455,31 +591,31 @@ export default function BootSequence({ durationMs, onFinish }: Props) {
       {phase === "BREACH" && (
         <section className="breachPanelV2" role="alert" aria-label="Unauthorized access warning">
           <div className="breachHeaderV2">
-            <span className="tag">ACCESS</span>
-            <span className="tag danger">UNAUTHORIZED</span>
+            <span className="tag">{T.breach_access}</span>
+            <span className="tag danger">{T.breach_unauth}</span>
           </div>
-          <div className="breachTitleV2">Conteúdo bloqueado por integridade temporal.</div>
+          <div className="breachTitleV2">{T.breach_title}</div>
           <div className="breachMsgV2">
-            Estes registros pertencem a eventos que <span className="dangerText">ainda não ocorreram</span> nesta época.
+            {T.breach_msg_a} <span className="dangerText">{T.breach_msg_b}</span> {T.breach_msg_c}
           </div>
           <div className="breachListV2 mono">
-            <div>• tentativa: leitura de arquivos futuros</div>
-            <div>• status: violação de janela cronológica</div>
+            <div>{T.breach_try}</div>
+            <div>{T.breach_status}</div>
             <div>• {breachNote}</div>
           </div>
-          <div className="breachPulseV2 mono" aria-hidden="true">NUVE IS OBSERVING</div>
+          <div className="breachPulseV2 mono" aria-hidden="true">{T.breach_observing}</div>
         </section>
       )}
 
       {phase === "RESET" && (
         <section className="resetPanelV2" aria-label="System reset">
-          <div className="resetTitleV2 mono">RECONFIGURANDO INSTÂNCIA</div>
+          <div className="resetTitleV2 mono">{T.reset_title}</div>
           <div className="resetSubV2 mono">{resetNote}</div>
           <div className="resetStackV2 mono">
-            <div>kill-switch: soft</div>
-            <div>cache: purge</div>
-            <div>index: resync</div>
-            <div>handoff: pending</div>
+            <div>{T.reset_kill}</div>
+            <div>{T.reset_cache}</div>
+            <div>{T.reset_index}</div>
+            <div>{T.reset_handoff}</div>
           </div>
           <div className="resetSpinnerV2" aria-hidden="true" />
         </section>
@@ -489,7 +625,7 @@ export default function BootSequence({ durationMs, onFinish }: Props) {
         <section className="deployPanelV2">
           <div className="deployTopV2">
             <div className="deployTitleV2">IRREVERSO OS</div>
-            <div className="deployMetaV2">Registro Autorizado • NUVE ONLINE</div>
+            <div className="deployMetaV2">{T.deploy_meta}</div>
           </div>
 
           <div className="deployConsoleV2" role="log" aria-label="Deploy Console">
@@ -503,10 +639,10 @@ export default function BootSequence({ durationMs, onFinish }: Props) {
 
           <div className="deployFooterV2">
             <div className="bar"><div className="fill" style={{ width: `${progress}%` }} /></div>
-            <div className="info mono"><span>deploying neural mesh…</span><span>{progress}%</span></div>
+            <div className="info mono"><span>{T.deploy_footer_left}</span><span>{progress}%</span></div>
           </div>
 
-          <div className="hint mono">(não clique. NNNNNão interrompa. a NUVE já decidiu.)</div>
+          <div className="hint mono">{T.deploy_hint}</div>
         </section>
       )}
     </main>

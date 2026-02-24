@@ -502,3 +502,78 @@ html, body {
   from { opacity: 0; transform: translateY(8px); }
   to { opacity: 1; transform: translateY(0); }
 }
+/* === IRREVERSO OS Core Shell (Phase 1) === */
+.coreRoot{position:relative;min-height:100vh;overflow:hidden;background:#05060a;color:#e8e9ff}
+.coreBg{position:absolute;inset:-20%;background:
+radial-gradient(1200px 800px at 30% 20%, rgba(0,255,240,.18), transparent 60%),
+radial-gradient(900px 700px at 70% 70%, rgba(154,75,255,.16), transparent 62%),
+radial-gradient(700px 600px at 55% 35%, rgba(255,85,185,.10), transparent 55%),
+radial-gradient(900px 900px at 50% 50%, rgba(30,40,90,.35), rgba(0,0,0,.85));
+filter:saturate(1.1) contrast(1.05);
+animation:coreDrift 14s ease-in-out infinite alternate;
+}
+@keyframes coreDrift{from{transform:translate3d(-1%, -1%, 0) scale(1.02)}to{transform:translate3d(1.5%, 1%, 0) scale(1.05)}}
+
+.coreGrid{position:relative;z-index:2;display:grid;grid-template-columns: 1fr minmax(520px, 860px) 360px;gap:22px;padding:22px;min-height:100vh}
+@media (max-width: 980px){.coreGrid{grid-template-columns:1fr;gap:14px;padding:14px}}
+.coreLeft{display:flex;flex-direction:column;gap:16px}
+.coreCenter{position:relative;border-radius:18px;background:rgba(8,9,16,.62);border:1px solid rgba(170,180,255,.14);box-shadow:0 18px 60px rgba(0,0,0,.55);backdrop-filter: blur(10px);overflow:hidden}
+.coreRight{position:relative;border-radius:18px;background:rgba(8,9,16,.48);border:1px solid rgba(170,180,255,.12);box-shadow:0 16px 46px rgba(0,0,0,.45);backdrop-filter: blur(10px);padding:14px}
+
+.coreHeader{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;padding:14px 16px;border-bottom:1px solid rgba(170,180,255,.10)}
+.coreTitle{font-size:18px;letter-spacing:.22em;text-transform:uppercase}
+.coreSub{font-size:11px;opacity:.75;letter-spacing:.14em;margin-top:6px}
+.coreHint{font-size:11px;opacity:.65;letter-spacing:.12em;text-transform:uppercase}
+
+.entityWrap{display:flex;align-items:center;justify-content:center;padding:18px 16px 12px}
+.entityOrb{width:220px;height:220px;border-radius:999px;position:relative;isolation:isolate;
+background:radial-gradient(circle at 30% 30%, rgba(0,255,240,.28), rgba(0,0,0,.0) 55%),
+radial-gradient(circle at 70% 65%, rgba(154,75,255,.22), rgba(0,0,0,.0) 52%),
+radial-gradient(circle at 45% 55%, rgba(255,85,185,.12), rgba(0,0,0,.0) 58%),
+radial-gradient(circle at 50% 50%, rgba(8,10,18,.92), rgba(0,0,0,.95));
+border:1px solid rgba(170,180,255,.16);
+box-shadow:0 0 0 1px rgba(0,255,240,.08), 0 22px 70px rgba(0,0,0,.70);
+}
+.entityOrb:before{content:"";position:absolute;inset:-22px;border-radius:999px;
+background:conic-gradient(from 90deg, rgba(0,255,240,.16), rgba(154,75,255,.10), rgba(255,85,185,.10), rgba(0,255,240,.16));
+filter:blur(14px);opacity:.55;animation:ringSpin 9.5s linear infinite;
+}
+@keyframes ringSpin{to{transform:rotate(360deg)}}
+.entityMark{position:absolute;inset:0;display:grid;place-items:center;font-weight:700;letter-spacing:.18em}
+.entityMark span{font-size:11px;opacity:.72;text-transform:uppercase}
+.entityPulse{position:absolute;inset:0;border-radius:999px;box-shadow:0 0 80px rgba(0,255,240,.12) inset;opacity:.65;animation:pulse 3.4s ease-in-out infinite}
+@keyframes pulse{0%,100%{transform:scale(1);opacity:.55}50%{transform:scale(1.02);opacity:.85}}
+
+.searchBox{padding:0 16px 14px}
+.searchRow{display:flex;align-items:center;gap:10px}
+.searchField{flex:1;border-radius:14px;padding:10px 12px;background:rgba(0,0,0,.35);border:1px solid rgba(170,180,255,.14);color:inherit;outline:none}
+.searchField:focus{border-color:rgba(0,255,240,.32);box-shadow:0 0 0 3px rgba(0,255,240,.08)}
+.searchTag{font-size:11px;opacity:.72;letter-spacing:.14em;text-transform:uppercase}
+
+.coreBody{padding:14px 16px 16px}
+.coreCard{border-radius:16px;background:rgba(0,0,0,.26);border:1px solid rgba(170,180,255,.10);padding:14px}
+.coreCard h2{font-size:12px;letter-spacing:.16em;text-transform:uppercase;margin:0 0 10px 0;opacity:.9}
+.coreCard p{margin:0 0 10px 0;opacity:.86;line-height:1.5}
+.coreMono{font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace}
+
+.timelineBar{position:relative;margin-top:auto;border-radius:18px;padding:12px 12px;background:rgba(8,9,16,.48);border:1px solid rgba(170,180,255,.12);backdrop-filter:blur(10px)}
+.timelineTitle{font-size:11px;opacity:.72;letter-spacing:.14em;text-transform:uppercase;margin:0 0 10px 0}
+.timelineYears{display:flex;flex-wrap:wrap;gap:8px}
+.yearBtn{appearance:none;border:1px solid rgba(170,180,255,.14);background:rgba(0,0,0,.22);color:inherit;border-radius:999px;padding:6px 10px;font-size:12px;opacity:.9;cursor:pointer}
+.yearBtn:hover{border-color:rgba(0,255,240,.28);box-shadow:0 0 0 3px rgba(0,255,240,.06)}
+.yearBtn.active{border-color:rgba(255,85,185,.28);box-shadow:0 0 0 3px rgba(255,85,185,.06)}
+
+.hiddenMenu{position:absolute;left:14px;top:14px;z-index:3}
+.menuButton{display:inline-flex;align-items:center;gap:8px;border-radius:999px;padding:8px 10px;border:1px solid rgba(170,180,255,.14);background:rgba(0,0,0,.30);color:inherit;cursor:pointer}
+.menuButton:hover{border-color:rgba(0,255,240,.28);box-shadow:0 0 0 3px rgba(0,255,240,.06)}
+.menuPanel{margin-top:10px;border-radius:16px;background:rgba(8,9,16,.72);border:1px solid rgba(170,180,255,.14);backdrop-filter:blur(10px);min-width:220px;overflow:hidden}
+.menuItem{display:flex;align-items:center;justify-content:space-between;padding:10px 12px;border-top:1px solid rgba(170,180,255,.08);text-decoration:none;color:inherit}
+.menuItem:first-child{border-top:none}
+.menuItem:hover{background:rgba(0,255,240,.06)}
+.menuMeta{font-size:11px;opacity:.65;letter-spacing:.12em;text-transform:uppercase}
+.rightRailTitle{font-size:11px;opacity:.72;letter-spacing:.14em;text-transform:uppercase;margin:0 0 10px 0}
+.kv{display:flex;justify-content:space-between;gap:10px;padding:8px 0;border-top:1px solid rgba(170,180,255,.08)}
+.kv:first-of-type{border-top:none}
+.k{opacity:.70}
+.v{font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;opacity:.92}
+.vertRail{position:absolute;right:-44px;top:130px;transform:rotate(90deg);transform-origin:right top;font-size:11px;letter-spacing:.18em;text-transform:uppercase;opacity:.55;white-space:nowrap}

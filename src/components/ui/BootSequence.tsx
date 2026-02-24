@@ -416,18 +416,20 @@ export default function BootSequence({ durationMs, onFinish }: Props) {
     const uGlitch = g.getUniformLocation(prog, "u_glitch");
 
     function resize() {
-      const dpr = Math.min(2, window.devicePixelRatio || 1);
-      const w = Math.floor(canvas.clientWidth * dpr);
-      const h = Math.floor(canvas.clientHeight * dpr);
-      if (canvas.width !== w || canvas.height !== h) {
-        canvas.width = w;
-        canvas.height = h;
-        g.viewport(0, 0, w, h);
-      }
-      g.useProgram(prog);
-      if (uRes) g.uniform2f(uRes, canvas.width, canvas.height);
-    }
+  const dpr = Math.min(2, window.devicePixelRatio || 1);
 
+  const w = Math.floor(c.clientWidth * dpr);
+  const h = Math.floor(c.clientHeight * dpr);
+
+  if (c.width !== w || c.height !== h) {
+    c.width = w;
+    c.height = h;
+    g.viewport(0, 0, w, h);
+  }
+
+  g.useProgram(prog);
+  if (uRes) g.uniform2f(uRes, c.width, c.height);
+}
     const onResize = () => resize();
     window.addEventListener("resize", onResize);
 

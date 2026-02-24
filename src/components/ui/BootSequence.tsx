@@ -204,7 +204,7 @@ export default function BootSequence({ durationMs, onFinish }: Props) {
           if (i < script.length) next.push(script[i++]);
         }
         return next.slice(-20);
-      });
+      });ƒ
 
       if (i >= script.length) {
         window.clearInterval(feed);
@@ -218,7 +218,8 @@ export default function BootSequence({ durationMs, onFinish }: Props) {
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
-
+    const c = canvas; // alias NÃO nulo para TS
+    
     const gl = canvas.getContext("webgl", {
       antialias: false,
       alpha: true,

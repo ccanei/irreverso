@@ -137,8 +137,8 @@ export default function BootSequence({ durationMs, onFinish, lang }: Props) {
   const [phase, setPhase] = useState<Phase>("ORBIT");
   const [progress, setProgress] = useState(0);
   const [lines, setLines] = useState<string[]>([]);
-  const [breachNote, setBreachNote] = useState(T.breach_note_1);
-  const [resetNote, setResetNote] = useState(T.reset_note_1);
+  const [breachNote, setBreachNote] = useState<string>(T.breach_note_1);
+  const [resetNote, setResetNote] = useState<string>(T.reset_note_1);
   const [glitch, setGlitch] = useState(false);
   const doneRef = useRef(false);
 

@@ -134,7 +134,7 @@ export default function BootSequence({ durationMs, onFinish, lang }: Props) {
   const [lines, setLines] = useState<string[]>([]);
 
   // ✅ IMPORTANT: always plain string to avoid literal-union SetState errors on Vercel
-  const [breachNote, setBreachNote] = useState<string>("");
+  const [breachNote, setBreachNote] = useState(T.breach_note_1);
   const [resetNote, setResetNote] = useState<string>("");
 
   const [glitch, setGlitch] = useState(false);

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 
 type Lang = "pt" | "en";
 
@@ -9,66 +10,62 @@ function detectLang(): Lang {
   return navigator.language.toLowerCase().startsWith("pt") ? "pt" : "en";
 }
 
-const DICT = {
+const TEXT = {
   pt: {
-    header: "IRREVERSO OS // INSTÂNCIA TEMPORAL",
-    bioDetected: "Instância biológica detectada.",
+    header: "NUVE OS // INSTÂNCIA TEMPORAL",
+    bio: "Instância biológica detectada.",
     region: "Região",
-    timezone: "Timezone",
-    yearConfirmed: "Ano local confirmado",
-    temporalDrift: "Desvio temporal",
+    tz: "Timezone",
+    year: "Ano local confirmado",
+    drift: "Desvio temporal",
     years: "anos",
-    cognitive: "Integração cognitiva",
-    notInitiated: "não iniciada",
+    cog: "Integração cognitiva",
+    cogNo: "não iniciada",
     access: "Permissão de acesso",
     partial: "parcial",
     intervention: "Intervenção necessária",
     none: "nenhuma",
-    gai2026: "Índice Global de Autonomia (2026)",
-    pai2107: "Índice Projetado de Autonomia (2107)",
-    stability: "Deriva de Estabilidade",
+    gai: "Índice Global de Autonomia (2026)",
+    pai: "Índice Projetado (2107)",
+    stability: "Deriva de estabilidade",
     within: "dentro da tolerância",
-    msg1: "Nada do que você decide é totalmente seu.",
-    msg2: "Mas ainda é necessário que você acredite que é.",
-    unknown: "Desconhecido",
+    elegant: "Processo de consciência: latente",
+    redirect: "Redirecionamento automático para /core em",
+    seconds: "segundos.",
   },
   en: {
-    header: "IRREVERSO OS // TEMPORAL INSTANCE",
-    bioDetected: "Biological instance detected.",
+    header: "NUVE OS // TEMPORAL INSTANCE",
+    bio: "Biological instance detected.",
     region: "Region",
-    timezone: "Timezone",
-    yearConfirmed: "Local year confirmed",
-    temporalDrift: "Temporal drift",
+    tz: "Timezone",
+    year: "Local year confirmed",
+    drift: "Temporal drift",
     years: "years",
-    cognitive: "Cognitive integration",
-    notInitiated: "not initiated",
+    cog: "Cognitive integration",
+    cogNo: "not initiated",
     access: "Access permission",
     partial: "partial",
-    intervention: "Required intervention",
+    intervention: "Intervention required",
     none: "none",
-    gai2026: "Global Autonomy Index (2026)",
-    pai2107: "Projected Autonomy Index (2107)",
+    gai: "Global Autonomy Index (2026)",
+    pai: "Projected Autonomy Index (2107)",
     stability: "Stability drift",
     within: "within tolerance",
-    msg1: "Nothing you decide is entirely yours.",
-    msg2: "Yet you still need to believe it is.",
-    unknown: "Unknown",
+    elegant: "Consciousness process: latent",
+    redirect: "Automatic redirect to /core in",
+    seconds: "seconds.",
   },
 } as const;
 
-function formatPct(n: number, lang: Lang) {
-  // pt -> 97,2% | en -> 97.2%
-  return `${n.toLocaleString(lang === "pt" ? "pt-BR" : "en-US", {
-    maximumFractionDigits: 1,
-    minimumFractionDigits: 0,
-  })}%`;
-}
-
 export default function TempAccessPage() {
-  const lang = useMemo(() => detectLang(), []);
-  const T = useMemo(() => DICT[lang], [lang]);
+  const router = useRouter();
 
+  const [lang, setLang] = useState<Lang>("en");
   const [phase, setPhase] = useState(0);
+  const [countdown, setCountdown] = useState(15);
+
+  const T = useMemo(() => TEXT[lang], [lang]);
+
   const [metrics, setMetrics] = useState({
     region: "",
     tz: "",
@@ -76,26 +73,43 @@ export default function TempAccessPage() {
   });
 
   useEffect(() => {
-    const tz = Intl.DateTimeFormat().resolvedOptions().timeZone || "";
+    setLang(detectLang());
+
+    const tz = Intl.DateTimeFormat().resolvedOptions().timeZone || "Unknown";
     const year = new Date().getFullYear();
 
     setMetrics({
-      region: tz.split("/")[0] || T.unknown,
-      tz: tz || T.unknown,
+      region: tz.split("/")[0] || "Unknown",
+      tz,
       year: String(year),
     });
 
-    const t1 = setTimeout(() => setPhase(1), 4000);
-    const t2 = setTimeout(() => setPhase(2), 9000);
+    // fases
+    const t1 = window.setTimeout(() => setPhase(1), 5000);
+    const t2 = window.setTimeout(() => setPhase(2), 10000);
+
+    // redirect em 15 segundos
+    const redirectTimer = window.setTimeout(() => {
+      router.push("/core");
+    }, 15000);
+
+    // countdown
+    const start = Date.now();
+    const interval = window.setInterval(() => {
+      const elapsed = Math.floor((Date.now() - start) / 1000);
+      const remaining = Math.max(0, 15 - elapsed);
+      setCountdown(remaining);
+    }, 250);
 
     return () => {
-      clearTimeout(t1);
-      clearTimeout(t2);
+      window.clearTimeout(t1);
+      window.clearTimeout(t2);
+      window.clearTimeout(redirectTimer);
+      window.clearInterval(interval);
     };
-  }, [T.unknown]);
+  }, [router]);
 
-  const yearNum = Number(metrics.year || 0);
-  const drift = yearNum > 0 ? Math.max(0, 2107 - yearNum) : 0;
+  const driftYears = 2107 - Number(metrics.year || 0);
 
   return (
     <div className="nuve-root">
@@ -105,21 +119,21 @@ export default function TempAccessPage() {
         <div className="nuve-header">{T.header}</div>
 
         <div className="nuve-log">
-          <p>{T.bioDetected}</p>
+          <p>{T.bio}</p>
           <p>
-            {T.region}: {metrics.region}
+            {T.region}: {metrics.region || "—"}
           </p>
           <p>
-            {T.timezone}: {metrics.tz}
+            {T.tz}: {metrics.tz || "—"}
           </p>
           <p>
-            {T.yearConfirmed}: {metrics.year}
+            {T.year}: {metrics.year || "—"}
           </p>
           <p>
-            {T.temporalDrift}: {drift} {T.years}
+            {T.drift}: {driftYears} {T.years}
           </p>
           <p>
-            {T.cognitive}: {T.notInitiated}
+            {T.cog}: {T.cogNo}
           </p>
           <p>
             {T.access}: {T.partial}
@@ -131,9 +145,9 @@ export default function TempAccessPage() {
 
         {phase >= 1 && (
           <div className="nuve-shift">
-            {T.gai2026}: {formatPct(34, lang)}
+            {T.gai}: 34%
             <br />
-            {T.pai2107}: {formatPct(97.2, lang)}
+            {T.pai}: 97.2%
             <br />
             {T.stability}: {T.within}
           </div>
@@ -141,9 +155,13 @@ export default function TempAccessPage() {
 
         {phase >= 2 && (
           <div className="nuve-message">
-            {T.msg1}
-            <br />
-            {T.msg2}
+            {/* alternativa elegante */}
+            <p>{T.elegant}</p>
+
+            {/* redirecionamento */}
+            <p style={{ marginTop: "18px", opacity: 0.85 }}>
+              {T.redirect} <b>{countdown}</b> {T.seconds}
+            </p>
           </div>
         )}
       </div>

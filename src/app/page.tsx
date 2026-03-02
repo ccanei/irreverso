@@ -4,45 +4,51 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import BootSequence from "@/components/ui/BootSequence";
 
-const STORAGE_KEY = "irreverso:lastSeen";
-const DAYS_30_MS = 30 * 24 * 60 * 60 * 1000;
+const STORAGE_KEY = "nuve_last_access";
+
+function getHost() {
+  if (typeof window === "undefined") return "";
+  return window.location.hostname.toLowerCase();
+}
 
 export default function Home() {
   const router = useRouter();
-  const [showBoot, setShowBoot] = useState(false);
+  const [ready, setReady] = useState(false);
+  const [directDomain, setDirectDomain] = useState(false);
 
   useEffect(() => {
-    const now = Date.now();
-    const lastSeen = Number(localStorage.getItem(STORAGE_KEY) || "0");
-    const recentlyVisited =
-      lastSeen > 0 && now - lastSeen < DAYS_30_MS;
+    const host = getHost();
 
-    if (recentlyVisited) {
-      // Atualiza timestamp
-      localStorage.setItem(STORAGE_KEY, String(now));
+    // ✅ nuve.network (ou subdomínios) = entra direto no CORE
+    const isDirect = host === "nuve.network" || host.endsWith(".nuve.network");
+    setDirectDomain(isDirect);
 
-      // Redireciona direto (sem boot)
-      router.replace("/temp_access");
-      return;
-    }
-
-    // Primeira visita ou passou de 30 dias
-    setShowBoot(true);
-  }, [router]);
-
-  const handleFinish = () => {
+    // Marca acesso (mantém, caso você queira usar depois)
     localStorage.setItem(STORAGE_KEY, String(Date.now()));
-    router.replace("/temp_access");
-  };
 
-  if (!showBoot) {
-    return null;
-  }
+    setReady(true);
+  }, []);
 
+  useEffect(() => {
+    if (!ready) return;
+
+    if (directDomain) {
+      router.replace("/core?entry=direct&handshake=bypassed");
+    }
+  }, [ready, directDomain, router]);
+
+  if (!ready) return null;
+
+  // ✅ directDomain pula tudo, vai direto pro core
+  if (directDomain) return null;
+
+  // ✅ irreversouniverse SEMPRE mostra boot e depois vai pro core (sem temp_access)
   return (
     <BootSequence
       durationMs={15000}
-      onFinish={handleFinish}
+      onFinish={() => {
+        router.replace("/core");
+      }}
     />
   );
 }
